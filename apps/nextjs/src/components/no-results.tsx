@@ -1,6 +1,5 @@
 import { Anchor, Card, Stack, Text } from "@mantine/core";
-
-import type { TablerIcon } from "@homarr/ui";
+import type { TablerIcon } from "@tabler/icons-react";
 
 interface NoResultsProps {
   icon: TablerIcon;

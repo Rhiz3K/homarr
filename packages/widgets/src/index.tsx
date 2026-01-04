@@ -11,7 +11,6 @@ import * as app from "./app";
 import * as bookmarks from "./bookmarks";
 import * as calendar from "./calendar";
 import * as clock from "./clock";
-import * as coolify from "./coolify";
 import type { WidgetComponentProps } from "./definition";
 import * as dnsHoleControls from "./dns-hole/controls";
 import * as dnsHoleSummary from "./dns-hole/summary";
@@ -76,7 +75,6 @@ export const widgetImports = {
   notifications,
   mediaReleases,
   systemResources,
-  coolify,
 } satisfies WidgetImportRecord;
 
 export type WidgetImports = typeof widgetImports;

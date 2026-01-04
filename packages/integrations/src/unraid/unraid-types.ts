@@ -34,7 +34,7 @@ export const unraidSystemInfoSchema = z.object({
         fsFree: z.number(),
         fsUsed: z.number(),
         status: z.string(),
-        temp: z.number().nullish(),
+        temp: z.number(),
       }),
     ),
   }),
