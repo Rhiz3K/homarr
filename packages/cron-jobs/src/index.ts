@@ -10,6 +10,7 @@ import {
   firewallVersionJob,
 } from "./jobs/integrations/firewall";
 import { healthMonitoringJob } from "./jobs/integrations/health-monitoring";
+import { hermesAgentJob } from "./jobs/integrations/hermes-agent";
 import { smartHomeEntityStateJob } from "./jobs/integrations/home-assistant";
 import { indexerManagerJob } from "./jobs/integrations/indexer-manager";
 import { mediaOrganizerJob } from "./jobs/integrations/media-organizer";
@@ -43,6 +44,7 @@ const getJobGroup = () => {
     rssFeeds: rssFeedsJob,
     indexerManager: indexerManagerJob,
     healthMonitoring: healthMonitoringJob,
+    hermesAgent: hermesAgentJob,
     updateChecker: updateCheckerJob,
     mediaTranscoding: mediaTranscodingJob,
     minecraftServerStatus: minecraftServerStatusJob,

@@ -30,6 +30,7 @@ export { UnraidIntegration } from "./unraid/unraid-integration";
 export { OPNsenseIntegration } from "./opnsense/opnsense-integration";
 export { ICalIntegration } from "./ical/ical-integration";
 export { CoolifyIntegration } from "./coolify/coolify-integration";
+export { HermesAgentIntegration } from "./hermes-agent/hermes-agent-integration";
 export { ImmichIntegration } from "./immich/immich-integration";
 export { TracearrIntegration } from "./tracearr/tracearr-integration";
 export { SpeedtestTrackerIntegration } from "./speedtest-tracker/speedtest-tracker-integration";
@@ -70,6 +71,7 @@ export type {
 export type { TracearrDashboardData } from "./tracearr/tracearr-types";
 export type { SpeedtestTrackerDashboardData } from "./speedtest-tracker/speedtest-tracker-types";
 export type { UmamiVisitorStats } from "./umami/umami-types";
+export type { HermesAgentOverview } from "./hermes-agent/hermes-agent-types";
 
 // Schemas
 export { anchorNotesListInputSchema } from "./anchor/anchor-types";

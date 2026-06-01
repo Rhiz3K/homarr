@@ -341,6 +341,15 @@ export const integrationDefs = {
     // @ts-expect-error - docs page will be created when integration is merged
     documentationUrl: createDocumentationLink("/docs/integrations/coolify"),
   },
+  hermesAgent: {
+    name: "Hermes Agent",
+    secretKinds: [["apiKey"]],
+    iconUrl: "https://hermes-agent.nousresearch.com/docs/img/logo.png",
+    defaultUrl: "http://127.0.0.1:8642",
+    category: ["automation"],
+    // @ts-expect-error - docs page will be created when integration is merged
+    documentationUrl: createDocumentationLink("/docs/integrations/hermes-agent"),
+  },
   searchCh: {
     name: "Search.ch",
     secretKinds: [[]],
@@ -470,6 +479,7 @@ export const integrationCategories = [
   "mediaMonitoring",
   "speedtest",
   "analytics",
+  "automation",
 ] as const;
 
 export type IntegrationCategory = (typeof integrationCategories)[number];

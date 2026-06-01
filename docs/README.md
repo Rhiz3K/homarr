@@ -59,21 +59,21 @@
 <tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/adguard-home" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/adguard-home.svg" alt="AdGuard Home" width="90" height="90" />
-  <br/>  
+  <br/>
   <p align="center">AdGuard<br/>Home</p>
 </a>
 </td>
 <td align="center">
 <a href="https://homarr.dev/docs/integrations/anchor" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/anchor.svg" alt="Anchor" width="90" height="90" />
-  <br/>  
+  <br/>
   <p align="center">Anchor</p>
 </a>
 </td>
 <td align="center">
 <a href="https://homarr.dev/docs/integrations/aria2" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/PapirusDevelopmentTeam/papirus_icons@latest/src/system_downloads_3.svg" alt="Aria2" width="90" height="90" />
-  <br/>  
+  <br/>
   <p align="center">Aria2</p>
 </a>
 </td>
@@ -148,13 +148,20 @@
 </a>
 </td>
 <td align="center">
+<a href="https://homarr.dev/docs/integrations/hermes-agent" target="_blank" rel="noreferrer noopener">
+  <img src="https://hermes-agent.nousresearch.com/docs/img/logo.png" alt="Hermes Agent" width="90" height="90" />
+  <br/>
+  <p align="center">Hermes<br/>Agent</p>
+</a>
+</td></tr>
+<tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/home-assistant" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/home-assistant.svg" alt="Home Assistant" width="90" height="90" />
   <br/>  
   <p align="center">Home<br/>Assistant</p>
 </a>
-</td></tr>
-<tr><td align="center">
+</td>
+<td align="center">
 <a href="https://homarr.dev/docs/integrations/ical" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/ical.svg" alt="iCal" width="90" height="90" />
   <br/>  
@@ -195,15 +202,15 @@
   <br/>  
   <p align="center">LinuxServer.io</p>
 </a>
-</td>
-<td align="center">
+</td></tr>
+<tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/nextcloud" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/nextcloud.svg" alt="Nextcloud" width="90" height="90" />
   <br/>  
   <p align="center">Nextcloud</p>
 </a>
-</td></tr>
-<tr><td align="center">
+</td>
+<td align="center">
 <a href="https://homarr.dev/docs/integrations/npm" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/npm.svg" alt="NPM" width="90" height="90" />
   <br/>  
@@ -244,15 +251,15 @@
   <br/>  
   <p align="center">Overseerr</p>
 </a>
-</td>
-<td align="center">
+</td></tr>
+<tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/pi-hole" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/pi-hole.svg" alt="Pi-hole" width="90" height="90" />
   <br/>  
   <p align="center">Pi-hole</p>
 </a>
-</td></tr>
-<tr><td align="center">
+</td>
+<td align="center">
 <a href="https://homarr.dev/docs/integrations/plex" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/plex.svg" alt="Plex" width="90" height="90" />
   <br/>  
@@ -293,15 +300,15 @@
   <br/>  
   <p align="center">Radarr</p>
 </a>
-</td>
-<td align="center">
+</td></tr>
+<tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/readarr" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/readarr.svg" alt="Readarr" width="90" height="90" />
   <br/>  
   <p align="center">Readarr</p>
 </a>
-</td></tr>
-<tr><td align="center">
+</td>
+<td align="center">
 <a href="https://homarr.dev/docs/integrations/sabnzbd" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/sabnzbd.svg" alt="SABnzbd" width="90" height="90" />
   <br/>  
@@ -342,15 +349,15 @@
   <br/>  
   <p align="center">Speedtest<br/>Tracker</p>
 </a>
-</td>
-<td align="center">
+</td></tr>
+<tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/tdarr" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/png/tdarr.png" alt="Tdarr" width="90" height="90" />
   <br/>  
   <p align="center">Tdarr</p>
 </a>
-</td></tr>
-<tr><td align="center">
+</td>
+<td align="center">
 <a href="https://homarr.dev/docs/integrations/tracearr" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/tracearr.svg" alt="Tracearr" width="90" height="90" />
   <br/>  

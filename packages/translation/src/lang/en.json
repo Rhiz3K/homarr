@@ -2061,6 +2061,77 @@
         "title": "Instances"
       }
     },
+    "hermesAgent": {
+      "name": "Hermes Agent",
+      "description": "Compact Hermes Agent gateway, update, skills, and job health summary",
+      "unknown": "Unknown",
+      "unknownShort": "n/a",
+      "option": {
+        "showPlatforms": {
+          "label": "Show platforms"
+        },
+        "showSessions": {
+          "label": "Show recent sessions"
+        },
+        "showJobs": {
+          "label": "Show scheduled jobs"
+        },
+        "showToolsets": {
+          "label": "Show toolsets"
+        }
+      },
+      "meta": {
+        "version": "v{version}"
+      },
+      "summary": {
+        "activeAgents": "Agents",
+        "commits": "Commits",
+        "jobs": "Jobs",
+        "platforms": "Platforms",
+        "release": "Release",
+        "sessions": "Active",
+        "skills": "Skills",
+        "toolsets": "Toolsets"
+      },
+      "sections": {
+        "platforms": "Platforms",
+        "sessions": "Recent sessions",
+        "jobs": "Scheduled jobs",
+        "toolsets": "Toolsets"
+      },
+      "empty": {
+        "platforms": "No platforms reported",
+        "sessions": "No recent sessions",
+        "jobs": "No scheduled jobs",
+        "toolsets": "No toolsets reported",
+        "enabledToolsets": "No enabled toolsets"
+      },
+      "sessions": {
+        "meta": "{messages} messages - {tools} tool calls - {tokens} tokens"
+      },
+      "jobs": {
+        "unnamed": "Unnamed job",
+        "enabled": "Enabled",
+        "failed": "{count} failed",
+        "ok": "ok",
+        "paused": "Paused",
+        "noSchedule": "No schedule",
+        "next": "next {when}"
+      },
+      "release": {
+        "available": "New release available",
+        "current": "Release current"
+      },
+      "toolsets": {
+        "tools": "{count, plural, =1 {# tool} other {# tools}}"
+      },
+      "footer": {
+        "updated": "Updated {when}"
+      },
+      "error": {
+        "internalServerError": "Failed to fetch Hermes Agent data"
+      }
+    },
     "tracearr": {
       "name": "Tracearr",
       "description": "Enhanced media server monitoring with detailed stream and transcoding data",
@@ -3754,6 +3825,9 @@
             },
             "healthMonitoring": {
               "label": "Health Monitoring"
+            },
+            "hermesAgent": {
+              "label": "Hermes Agent"
             },
             "dnsHole": {
               "label": "DNS Hole Data"
