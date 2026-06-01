@@ -8,21 +8,27 @@ import type { WidgetComponentProps } from "../definition";
 import { NoIntegrationDataError } from "../errors/no-data-integration";
 import { HermesAgentInstanceCard } from "./instance-card";
 
-export default function HermesAgentWidget({ integrationIds, width, isEditMode }: WidgetComponentProps<"hermesAgent">) {
+export default function HermesAgentWidget({
+  integrationIds,
+  width,
+  height,
+  isEditMode,
+}: WidgetComponentProps<"hermesAgent">) {
   if (integrationIds.length === 0) {
     throw new NoIntegrationDataError();
   }
 
-  return <HermesAgentContent integrationIds={integrationIds} width={width} isEditMode={isEditMode} />;
+  return <HermesAgentContent integrationIds={integrationIds} width={width} height={height} isEditMode={isEditMode} />;
 }
 
 interface HermesAgentContentProps {
   integrationIds: string[];
   width: number;
+  height: number;
   isEditMode: boolean;
 }
 
-function HermesAgentContent({ integrationIds, width, isEditMode }: HermesAgentContentProps) {
+function HermesAgentContent({ integrationIds, width, height, isEditMode }: HermesAgentContentProps) {
   const [instances] = clientApi.widget.hermesAgent.getOverviews.useSuspenseQuery({ integrationIds });
   const utils = clientApi.useUtils();
 
@@ -43,13 +49,23 @@ function HermesAgentContent({ integrationIds, width, isEditMode }: HermesAgentCo
     },
   );
 
-  const isTiny = width < 280;
+  const isNarrow = width < 180;
+  const isShort = height < 170;
+  const isTiny = isNarrow || isShort || width < 280;
 
   return (
     <ScrollArea h="100%">
-      <Stack gap="xs" p="xs">
+      <Stack gap={isTiny ? 4 : "xs"} p={isShort ? 2 : isTiny ? 4 : "xs"}>
         {instances.map((instance) => (
-          <HermesAgentInstanceCard key={instance.integrationId} instance={instance} isTiny={isTiny} />
+          <HermesAgentInstanceCard
+            key={instance.integrationId}
+            instance={instance}
+            width={width}
+            height={height}
+            isNarrow={isNarrow}
+            isShort={isShort}
+            isTiny={isTiny}
+          />
         ))}
       </Stack>
     </ScrollArea>
