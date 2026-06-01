@@ -1,4 +1,4 @@
-FROM node:24.13.0-alpine AS base
+FROM node:24.16.0-alpine AS base
 
 FROM base AS builder
 RUN apk add --no-cache libc6-compat
@@ -43,8 +43,6 @@ RUN mkdir -p /var/cache/nginx && \
 COPY --from=builder /app/apps/nextjs/next.config.ts .
 COPY --from=builder /app/apps/nextjs/package.json .
 
-COPY --from=builder /app/apps/tasks/tasks.cjs ./apps/tasks/tasks.cjs
-COPY --from=builder /app/apps/websocket/wssServer.cjs ./apps/websocket/wssServer.cjs
 COPY --from=builder /app/node_modules/better-sqlite3/build/Release/better_sqlite3.node /app/build/better_sqlite3.node
 
 COPY --from=builder /app/packages/db/migrations ./db/migrations

@@ -59,6 +59,18 @@ const createColumns = (
     },
   },
   {
+    accessorKey: "host",
+    header: t("docker.field.host.label"),
+    size: 140,
+    Cell({ row }) {
+      return (
+        <Text truncate="end" title={row.original.host}>
+          {row.original.host}
+        </Text>
+      );
+    },
+  },
+  {
     accessorKey: "image",
     header: t("docker.field.containerImage.label"),
     maxSize: 200,
@@ -76,6 +88,7 @@ const createColumns = (
     accessorKey: "ports",
     header: t("docker.field.ports.label"),
     Cell({ cell }) {
+      if (!cell.row.original.ports) return null;
       if (!cell.row.original.ports.length) return null;
       return (
         <OverflowBadge overflowCount={1} data={cell.row.original.ports.map((port) => port.PrivatePort.toString())} />
@@ -189,7 +202,7 @@ const ContainerActionBar = ({ selectedContainers }: ContainerActionBarProps) => 
       <ContainerActionBarButton icon={IconPlayerStop} color="red" action="stop" selectedIds={selectedIds} />
       <ContainerActionBarButton icon={IconRotateClockwise} color="orange" action="restart" selectedIds={selectedIds} />
       <ContainerActionBarButton icon={IconTrash} color="red" action="remove" selectedIds={selectedIds} />
-      <Button leftSection={<IconCategoryPlus />} color={"red"} onClick={handleClick} variant="light" radius="md">
+      <Button leftSection={<IconCategoryPlus />} color={"red"} onClick={handleClick} variant="light">
         {t("addToHomarr.label")}
       </Button>
     </Group>
@@ -240,7 +253,6 @@ const ContainerActionBarButton = (props: ContainerActionBarButtonProps) => {
       onClick={handleClickAsync}
       loading={isPending}
       variant="light"
-      radius="md"
     >
       {t(`${props.action}.label`)}
     </Button>

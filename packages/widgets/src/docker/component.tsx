@@ -62,7 +62,7 @@ const createColumns = (
     Cell({ renderedCellValue, row }) {
       return (
         <Group gap="xs" wrap="nowrap">
-          <Avatar variant="outline" radius="md" size={20} src={row.original.iconUrl} />
+          <Avatar variant="outline" size={20} src={row.original.iconUrl} />
           <Text p="0.5" size="sm" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
             {renderedCellValue}
           </Text>
@@ -77,6 +77,19 @@ const createColumns = (
     header: t("field.state.label"),
     Cell({ row }) {
       return <ContainerStateBadge state={row.original.state} />;
+    },
+  },
+  {
+    id: "host",
+    accessorKey: "host",
+    size: 100,
+    header: t("field.host.label"),
+    Cell({ row }) {
+      return (
+        <Text size="xs" truncate="end">
+          {row.original.host}
+        </Text>
+      );
     },
   },
   {

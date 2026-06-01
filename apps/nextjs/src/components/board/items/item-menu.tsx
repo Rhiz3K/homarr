@@ -3,6 +3,7 @@ import { ActionIcon, Menu } from "@mantine/core";
 import { IconCopy, IconDotsVertical, IconLayoutKanban, IconPencil, IconTrash } from "@tabler/icons-react";
 
 import { clientApi } from "@homarr/api/client";
+import { useSession } from "@homarr/auth/client";
 import { useEditMode } from "@homarr/boards/edit-mode";
 import { useConfirmModal, useModalAction } from "@homarr/modals";
 import { useSettings } from "@homarr/settings";
@@ -15,15 +16,20 @@ import { useSectionContext } from "../sections/section-context";
 import { useItemActions } from "./item-actions";
 import { ItemMoveModal } from "./item-move-modal";
 
-export const BoardItemMenu = ({
-  offset,
-  item,
-  resetErrorBoundary,
-}: {
+interface BoardItemMenuProps {
   offset: number;
   item: SectionItem;
   resetErrorBoundary?: () => void;
-}) => {
+}
+
+export const BoardItemMenu = (props: BoardItemMenuProps) => {
+  const { data: session } = useSession();
+  if (!session) return null;
+
+  return <BoardItemMenuInner {...props} />;
+};
+
+const BoardItemMenuInner = ({ offset, item, resetErrorBoundary }: BoardItemMenuProps) => {
   const refResetErrorBoundaryOnNextRender = useRef(false);
   const tItem = useScopedI18n("item");
   const t = useI18n();
@@ -99,9 +105,17 @@ export const BoardItemMenu = ({
   };
 
   return (
-    <Menu withinPortal withArrow position="right-start" arrowPosition="center">
+    <Menu withinPortal position="right-start" arrowPosition="center">
       <Menu.Target>
-        <ActionIcon variant="default" radius={"xl"} pos="absolute" top={offset} right={offset} style={{ zIndex: 10 }}>
+        <ActionIcon
+          variant="default"
+          radius={"xl"}
+          pos="absolute"
+          top={offset}
+          right={offset}
+          style={{ zIndex: 10 }}
+          aria-label={tItem("menu.label.settings")}
+        >
           <IconDotsVertical size={"1rem"} />
         </ActionIcon>
       </Menu.Target>

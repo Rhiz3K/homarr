@@ -5,6 +5,7 @@ export const widgetKinds = [
   "iframe",
   "video",
   "notebook",
+  "anchorNote",
   "dnsHoleSummary",
   "dnsHoleControls",
   "smartHome-entityState",
@@ -31,5 +32,11 @@ export const widgetKinds = [
   "systemResources",
   "coolify",
   "systemDisks",
+  "timetable",
+  "immich-serverStats",
+  "immich-albumCarousel",
+  "tracearr",
+  "speedtestTracker",
+  "umami",
 ] as const;
 export type WidgetKind = (typeof widgetKinds)[number];

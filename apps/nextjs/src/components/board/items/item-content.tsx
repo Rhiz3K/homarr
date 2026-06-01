@@ -42,7 +42,6 @@ export const BoardItemContent = ({ item }: BoardItemContentProps) => {
           item.advancedOptions.customCssClasses.join(" "),
         )}
         radius={board.itemRadius}
-        withBorder
         styles={{
           root: {
             "--opacity": board.opacity / 100,
@@ -117,7 +116,6 @@ const InnerContent = ({ item, ...dimensions }: InnerContentProps) => {
             when={
               widgetSupportsIntegrations &&
               item.integrationIds.length === 0 &&
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
               (!("integrationsRequired" in definition) || definition.integrationsRequired !== false)
             }
           />

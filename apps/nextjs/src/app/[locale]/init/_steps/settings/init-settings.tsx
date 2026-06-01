@@ -1,6 +1,5 @@
 "use client";
 
-import { startTransition } from "react";
 import { Button, Card, Group, Stack, Switch, Text } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
 import type { z } from "zod/v4";
@@ -24,16 +23,6 @@ export const InitSettings = () => {
   });
   const form = useZodForm(settingsInitSchema, { initialValues: defaultServerSettings });
 
-  form.watch("analytics.enableGeneral", ({ value }) => {
-    if (!value) {
-      startTransition(() => {
-        form.setFieldValue("analytics.enableWidgetData", false);
-        form.setFieldValue("analytics.enableIntegrationData", false);
-        form.setFieldValue("analytics.enableUserData", false);
-      });
-    }
-  });
-
   const handleSubmitAsync = async (values: z.infer<typeof settingsInitSchema>) => {
     await mutateAsync(values);
   };
@@ -41,34 +30,16 @@ export const InitSettings = () => {
   return (
     <form onSubmit={form.onSubmit(handleSubmitAsync)}>
       <Stack>
-        <Card w={64 * 12 + 8} maw="90vw" withBorder>
+        <Card w={64 * 12 + 8} maw="90vw">
           <Stack gap="sm">
             <Text fw={500}>{tSection("analytics.title")}</Text>
 
             <Stack gap="xs">
               <AnalyticsRow kind="general" {...form.getInputProps("analytics.enableGeneral", { type: "checkbox" })} />
-
-              <Stack gap="xs" ps="md" w="100%">
-                <AnalyticsRow
-                  kind="integrationData"
-                  disabled={!form.values.analytics.enableGeneral}
-                  {...form.getInputProps("analytics.enableWidgetData", { type: "checkbox" })}
-                />
-                <AnalyticsRow
-                  kind="widgetData"
-                  disabled={!form.values.analytics.enableGeneral}
-                  {...form.getInputProps("analytics.enableIntegrationData", { type: "checkbox" })}
-                />
-                <AnalyticsRow
-                  kind="usersData"
-                  disabled={!form.values.analytics.enableGeneral}
-                  {...form.getInputProps("analytics.enableUserData", { type: "checkbox" })}
-                />
-              </Stack>
             </Stack>
           </Stack>
         </Card>
-        <Card w={64 * 12 + 8} maw="90vw" withBorder>
+        <Card w={64 * 12 + 8} maw="90vw">
           <Stack gap="sm">
             <Text fw={500}>{tSection("crawlingAndIndexing.title")}</Text>
 

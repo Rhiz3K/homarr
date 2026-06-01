@@ -2,30 +2,23 @@
 
 import type { PropsWithChildren } from "react";
 import type { MantineColorScheme, MantineColorSchemeManager } from "@mantine/core";
-import { createTheme, DirectionProvider, MantineProvider } from "@mantine/core";
+import { DirectionProvider, MantineProvider } from "@mantine/core";
 import dayjs from "dayjs";
 
 import { clientApi } from "@homarr/api/client";
 import { useSession } from "@homarr/auth/client";
 import { parseCookies, setClientCookie } from "@homarr/common";
-import type { ColorScheme } from "@homarr/definitions";
 import { colorSchemeCookieKey } from "@homarr/definitions";
+import { theme } from "@homarr/ui";
 
 export const CustomMantineProvider = ({
   children,
   defaultColorScheme,
-}: PropsWithChildren<{ defaultColorScheme: ColorScheme }>) => {
+}: PropsWithChildren<{ defaultColorScheme: MantineColorScheme }>) => {
   const manager = useColorSchemeManager();
   return (
     <DirectionProvider>
-      <MantineProvider
-        defaultColorScheme={defaultColorScheme}
-        colorSchemeManager={manager}
-        theme={createTheme({
-          primaryColor: "red",
-          autoContrast: true,
-        })}
-      >
+      <MantineProvider defaultColorScheme={defaultColorScheme} colorSchemeManager={manager} theme={theme}>
         {children}
       </MantineProvider>
     </DirectionProvider>
@@ -35,7 +28,7 @@ export const CustomMantineProvider = ({
 export function useColorSchemeManager(): MantineColorSchemeManager {
   const { data: session } = useSession();
 
-  const updateCookieValue = (value: Exclude<MantineColorScheme, "auto">) => {
+  const updateCookieValue = (value: MantineColorScheme) => {
     setClientCookie(colorSchemeCookieKey, value, { expires: dayjs().add(1, "year").toDate(), path: "/" });
   };
 
@@ -60,7 +53,6 @@ export function useColorSchemeManager(): MantineColorSchemeManager {
     },
 
     set: (value) => {
-      if (value === "auto") return;
       try {
         if (session) {
           mutateColorScheme({ colorScheme: value });
