@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Group, Menu, ScrollArea } from "@mantine/core";
+import { OnboardingTour } from "@gfazioli/mantine-onboarding-tour";
+import { Box, Group, Menu, ScrollArea } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
 import {
   IconBox,
@@ -11,6 +12,7 @@ import {
   IconLayoutBoard,
   IconPencil,
   IconPencilOff,
+  IconPlug,
   IconPlus,
   IconReplace,
   IconResize,
@@ -36,14 +38,18 @@ import { useBoardPermissions } from "~/components/board/permissions/client";
 import { useCategoryActions } from "~/components/board/sections/category/category-actions";
 import { CategoryEditModal } from "~/components/board/sections/category/category-edit-modal";
 import { useDynamicSectionActions } from "~/components/board/sections/dynamic/dynamic-actions";
+import { IntegrationSelectModal } from "~/components/integration/integration-select-modal";
 import { HeaderButton } from "~/components/layout/header/button";
 
 export const BoardContentHeaderActions = () => {
   const [isEditMode] = useEditMode();
   const board = useRequiredBoard();
   const { hasChangeAccess } = useBoardPermissions(board);
+  // Fall back to read-only if the query has no data (e.g. errored) so we never expose
+  // edit/save/settings UI that would then fail server-side.
+  const { data: demoReadOnly = true, isLoading } = clientApi.info.isDemoReadOnly.useQuery();
 
-  if (!hasChangeAccess) {
+  if (!hasChangeAccess || isLoading) {
     return <SelectBoardsMenu />;
   }
 
@@ -51,11 +57,15 @@ export const BoardContentHeaderActions = () => {
     <>
       {isEditMode && <AddMenu />}
 
-      <EditModeMenu />
+      <EditModeMenu demoReadOnly={demoReadOnly} />
 
-      <HeaderButton href={`/boards/${board.name}/settings`}>
-        <IconSettings stroke={1.5} />
-      </HeaderButton>
+      {!demoReadOnly && (
+        <OnboardingTour.Target id="board-settings">
+          <HeaderButton href={`/boards/${board.name}/settings`}>
+            <IconSettings stroke={1.5} />
+          </HeaderButton>
+        </OnboardingTour.Target>
+      )}
 
       <SelectBoardsMenu />
     </>
@@ -67,6 +77,7 @@ const AddMenu = () => {
   const { openModal: openCategoryEditModal } = useModalAction(CategoryEditModal);
   const { openModal: openItemSelectModal } = useModalAction(ItemSelectModal);
   const { openModal: openAppSelectModal } = useModalAction(AppSelectModal);
+  const { openModal: openIntegrationSelectModal } = useModalAction(IntegrationSelectModal);
   const { addCategoryToEnd } = useCategoryActions();
   const { addDynamicSection } = useDynamicSectionActions();
   const { createItem } = useItemActions();
@@ -108,6 +119,10 @@ const AddMenu = () => {
     });
   }, [openAppSelectModal, createItem]);
 
+  const handleAddIntegration = useCallback(() => {
+    openIntegrationSelectModal({});
+  }, [openIntegrationSelectModal]);
+
   return (
     <Menu position="bottom-end">
       <Menu.Target>
@@ -127,6 +142,10 @@ const AddMenu = () => {
           {t("app.action.add")}
         </Menu.Item>
 
+        <Menu.Item leftSection={<IconPlug size={20} />} onClick={handleAddIntegration}>
+          {t("integration.action.create")}
+        </Menu.Item>
+
         <Menu.Divider />
 
         <Menu.Item leftSection={<IconBoxAlignTop size={20} />} onClick={handleAddCategory}>
@@ -141,7 +160,7 @@ const AddMenu = () => {
   );
 };
 
-const EditModeMenu = () => {
+const EditModeMenu = ({ demoReadOnly }: { demoReadOnly: boolean }) => {
   const [isEditMode, { open, close }] = useEditMode();
   const board = useRequiredBoard();
   const utils = clientApi.useUtils();
@@ -164,18 +183,28 @@ const EditModeMenu = () => {
     },
   });
 
+  const discardDemoChanges = useCallback(() => {
+    void utils.board.getBoardByName.invalidate({ name: board.name });
+    close();
+  }, [utils, board.name, close]);
+
   const toggle = useCallback(() => {
-    if (isEditMode) return saveBoard(board);
+    if (isEditMode) {
+      if (demoReadOnly) return discardDemoChanges();
+      return saveBoard(board);
+    }
     open();
-  }, [board, isEditMode, saveBoard, open]);
+  }, [board, isEditMode, demoReadOnly, saveBoard, open, discardDemoChanges]);
 
   useHotkeys([[hotkeys.toggleBoardEdit, toggle]]);
   usePreventLeaveWithDirty(isEditMode);
 
   return (
-    <HeaderButton onClick={toggle} loading={isPending}>
-      {isEditMode ? <IconPencilOff stroke={1.5} /> : <IconPencil stroke={1.5} />}
-    </HeaderButton>
+    <OnboardingTour.Target id="board-edit-mode">
+      <HeaderButton onClick={toggle} loading={isPending}>
+        {isEditMode ? <IconPencilOff stroke={1.5} /> : <IconPencil stroke={1.5} />}
+      </HeaderButton>
+    </OnboardingTour.Target>
   );
 };
 
@@ -183,27 +212,31 @@ const SelectBoardsMenu = () => {
   const { data: boards = [] } = clientApi.board.getAllBoards.useQuery();
 
   return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <HeaderButton w="auto" px={4}>
-          <IconReplace stroke={1.5} />
-        </HeaderButton>
-      </Menu.Target>
-      <Menu.Dropdown style={{ transform: "translate(-7px, 0)" }}>
-        <ScrollArea.Autosize mah={300}>
-          {boards.map((board) => (
-            <Menu.Item
-              key={board.id}
-              component={Link}
-              href={`/boards/${board.name}`}
-              leftSection={<IconLayoutBoard size={20} />}
-            >
-              {board.name}
-            </Menu.Item>
-          ))}
-        </ScrollArea.Autosize>
-      </Menu.Dropdown>
-    </Menu>
+    <OnboardingTour.Target id="board-switcher">
+      <Box>
+        <Menu position="bottom-end">
+          <Menu.Target>
+            <HeaderButton w="auto" px={4}>
+              <IconReplace stroke={1.5} />
+            </HeaderButton>
+          </Menu.Target>
+          <Menu.Dropdown style={{ transform: "translate(-7px, 0)" }}>
+            <ScrollArea.Autosize mah={300}>
+              {boards.map((board) => (
+                <Menu.Item
+                  key={board.id}
+                  component={Link}
+                  href={`/boards/${board.name}`}
+                  leftSection={<IconLayoutBoard size={20} />}
+                >
+                  {board.name}
+                </Menu.Item>
+              ))}
+            </ScrollArea.Autosize>
+          </Menu.Dropdown>
+        </Menu>
+      </Box>
+    </OnboardingTour.Target>
   );
 };
 
@@ -244,7 +277,7 @@ const usePreventLeaveWithDirty = (isDirty: boolean) => {
     };
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (env.NODE_ENV === "development") return; // Allow to reload in development
+      if (env.NODE_ENV === "development") return;
 
       event.preventDefault();
       event.returnValue = true;

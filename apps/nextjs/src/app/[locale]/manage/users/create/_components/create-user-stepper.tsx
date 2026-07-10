@@ -1,20 +1,7 @@
 "use client";
 
 import { startTransition, useCallback, useState } from "react";
-import {
-  Badge,
-  Button,
-  Card,
-  Group,
-  PasswordInput,
-  Stack,
-  Stepper,
-  Table,
-  Text,
-  TextInput,
-  Title,
-  Tooltip,
-} from "@mantine/core";
+import { Badge, Button, Card, Group, Stack, Stepper, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
 import { useListState } from "@mantine/hooks";
 import { IconPlus, IconUserCheck } from "@tabler/icons-react";
 import { z } from "zod/v4";
@@ -24,11 +11,13 @@ import type { GroupPermissionKey } from "@homarr/definitions";
 import { everyoneGroup, groupPermissions } from "@homarr/definitions";
 import type { IsValid } from "@homarr/form";
 import { useZodForm } from "@homarr/form";
+import { UserCreatePasswordFields } from "@homarr/forms-collection";
 import { useModalAction } from "@homarr/modals";
 import { showErrorNotification } from "@homarr/notifications";
 import { useI18n, useScopedI18n } from "@homarr/translation/client";
-import { CustomPasswordInput, UserAvatar } from "@homarr/ui";
+import { UserAvatar } from "@homarr/ui";
 import { createCustomErrorParams } from "@homarr/validation/form/i18n";
+import { optionalEmailSchema } from "@homarr/validation/email";
 import { userPasswordSchema } from "@homarr/validation/user";
 
 import { GroupSelectModal } from "~/components/access/group-select-modal";
@@ -72,7 +61,7 @@ export const UserCreateStepperComponent = ({ initialGroups }: UserCreateStepperC
   const generalForm = useZodForm(
     z.object({
       username: z.string().min(1),
-      email: z.string().email().or(z.string().length(0).optional()),
+      email: optionalEmailSchema,
     }),
     {
       initialValues: {
@@ -167,18 +156,10 @@ export const UserCreateStepperComponent = ({ initialGroups }: UserCreateStepperC
           <form>
             <Card p="xl">
               <Stack gap="md">
-                <CustomPasswordInput
-                  withPasswordRequirements
-                  label={tUserField("password.label")}
+                <UserCreatePasswordFields
                   variant="filled"
-                  withAsterisk
-                  {...securityForm.getInputProps("password")}
-                />
-                <PasswordInput
-                  label={tUserField("passwordConfirm.label")}
-                  variant="filled"
-                  withAsterisk
-                  {...securityForm.getInputProps("confirmPassword")}
+                  passwordInputProps={securityForm.getInputProps("password")}
+                  confirmPasswordInputProps={securityForm.getInputProps("confirmPassword")}
                 />
               </Stack>
             </Card>

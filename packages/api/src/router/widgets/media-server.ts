@@ -1,12 +1,11 @@
-import { observable } from "@trpc/server/observable";
 import { z } from "zod/v4";
 
 import { getIntegrationKindsByCategory } from "@homarr/definitions";
-import type { StreamSession } from "@homarr/integrations";
 import { mediaServerRequestHandler } from "@homarr/request-handler/media-server";
 
 import type { IntegrationAction } from "../../middlewares/integration";
 import { createManyIntegrationMiddleware } from "../../middlewares/integration";
+import { settleIntegrationQueries } from "../../settle-integrations";
 import { createTRPCRouter, publicProcedure } from "../../trpc";
 
 const createMediaServerIntegrationMiddleware = (action: IntegrationAction) =>
@@ -14,47 +13,21 @@ const createMediaServerIntegrationMiddleware = (action: IntegrationAction) =>
 
 export const mediaServerRouter = createTRPCRouter({
   getCurrentStreams: publicProcedure
+    .meta({
+      mcp: {
+        enabled: true,
+        description:
+          "Get currently active streams from Plex/Jellyfin/Emby media servers. REQUIRED: integrationIds (array of media server integration IDs from integration_all), showOnlyPlaying (boolean — true to filter to actively playing streams only)",
+      },
+    })
     .concat(createMediaServerIntegrationMiddleware("query"))
     .input(z.object({ showOnlyPlaying: z.boolean() }))
     .query(async ({ ctx, input }) => {
-      return await Promise.all(
-        ctx.integrations.map(async (integration) => {
-          const innerHandler = mediaServerRequestHandler.handler(integration, {
-            showOnlyPlaying: input.showOnlyPlaying,
-          });
-          const { data } = await innerHandler.getCachedOrUpdatedDataAsync({ forceUpdate: false });
-          return {
-            integrationId: integration.id,
-            integrationKind: integration.kind,
-            sessions: data,
-          };
-        }),
-      );
-    }),
-  subscribeToCurrentStreams: publicProcedure
-    .concat(createMediaServerIntegrationMiddleware("query"))
-    .input(z.object({ showOnlyPlaying: z.boolean() }))
-    .subscription(({ ctx, input }) => {
-      return observable<{ integrationId: string; data: StreamSession[] }>((emit) => {
-        const unsubscribes: (() => void)[] = [];
-        for (const integration of ctx.integrations) {
-          const innerHandler = mediaServerRequestHandler.handler(integration, {
-            showOnlyPlaying: input.showOnlyPlaying,
-          });
-
-          const unsubscribe = innerHandler.subscribe((sessions) => {
-            emit.next({
-              integrationId: integration.id,
-              data: sessions,
-            });
-          });
-          unsubscribes.push(unsubscribe);
-        }
-        return () => {
-          unsubscribes.forEach((unsubscribe) => {
-            unsubscribe();
-          });
-        };
+      return await settleIntegrationQueries(ctx.integrations, async (integration) => {
+        const { data } = await mediaServerRequestHandler
+          .handler(integration, { showOnlyPlaying: input.showOnlyPlaying })
+          .getDataAsync();
+        return { integrationId: integration.id, integrationKind: integration.kind, sessions: data };
       });
     }),
 });

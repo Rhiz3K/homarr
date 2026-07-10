@@ -29,24 +29,9 @@ interface HermesAgentContentProps {
 }
 
 function HermesAgentContent({ integrationIds, width, height, isEditMode }: HermesAgentContentProps) {
-  const [instances] = clientApi.widget.hermesAgent.getOverviews.useSuspenseQuery({ integrationIds });
-  const utils = clientApi.useUtils();
-
-  clientApi.widget.hermesAgent.subscribeOverviews.useSubscription(
+  const [instances] = clientApi.widget.hermesAgent.getOverviews.useSuspenseQuery(
     { integrationIds },
-    {
-      enabled: !isEditMode,
-      onData(newData) {
-        utils.widget.hermesAgent.getOverviews.setData({ integrationIds }, (prevData) => {
-          if (!prevData) return prevData;
-          return prevData.map((instance) =>
-            instance.integrationId === newData.integrationId
-              ? { ...instance, overview: newData.overview, updatedAt: newData.timestamp }
-              : instance,
-          );
-        });
-      },
-    },
+    { refetchInterval: isEditMode ? false : 30_000 },
   );
 
   const isNarrow = width < 180;

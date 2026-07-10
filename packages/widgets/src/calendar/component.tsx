@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMantineTheme } from "@mantine/core";
 import { Calendar } from "@mantine/dates";
@@ -39,29 +39,9 @@ const FetchCalendar = ({ month, setMonth, isEditMode, integrationIds, options }:
     releaseType: options.releaseType,
     showUnmonitored: options.showUnmonitored,
   };
-  const [data] = clientApi.widget.calendar.findAllEvents.useSuspenseQuery(input, {
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: false,
-  });
+  const { data } = clientApi.widget.calendar.findAllEvents.useQuery(input);
 
-  const utils = clientApi.useUtils();
-  clientApi.widget.calendar.subscribeToEvents.useSubscription(input, {
-    onData(data) {
-      utils.widget.calendar.findAllEvents.setData(input, (old) => {
-        return old?.map((item) => {
-          if (item.integration.id !== data.integration.id) return item;
-          return {
-            ...item,
-            events: data.events,
-          };
-        });
-      });
-    },
-  });
-
-  const events = useMemo(() => data.flatMap((item) => item.events), [data]);
+  const events = useMemo(() => data?.flatMap((item) => item.events) ?? [], [data]);
 
   return <CalendarBase isEditMode={isEditMode} events={events} month={month} setMonth={setMonth} options={options} />;
 };
@@ -85,6 +65,11 @@ const CalendarBase = ({ isEditMode, events, month, setMonth, options }: Calendar
   const isSmall = width < 256;
 
   const normalizedEvents = useMemo(() => splitEvents(events), [events]);
+  const activeCloseRef = useRef<(() => void) | null>(null);
+  const onDayOpen = useCallback((close: () => void) => {
+    activeCloseRef.current?.();
+    activeCloseRef.current = close;
+  }, []);
 
   return (
     <Calendar
@@ -152,18 +137,16 @@ const CalendarBase = ({ isEditMode, events, month, setMonth, options }: Calendar
           .filter(
             (event) => event.metadata?.type !== "radarr" || options.releaseType.includes(event.metadata.releaseType),
           )
-          .sort((eventA, eventB) => eventA.startDate.getTime() - eventB.startDate.getTime());
+          .toSorted((eventA, eventB) => eventA.startDate.getTime() - eventB.startDate.getTime());
 
         return (
           <CalendarDay
-            // new Date() does not work here, because for timezones like UTC-7 it will
-            // show one day earlier (probably due to the time being set to 00:00)
-            // see https://github.com/homarr-labs/homarr/pull/3120
             date={dayjs(tileDate).toDate()}
             events={eventsForDate}
             disabled={isEditMode || eventsForDate.length === 0}
             rootWidth={width}
             rootHeight={height}
+            onOpen={onDayOpen}
           />
         );
       }}

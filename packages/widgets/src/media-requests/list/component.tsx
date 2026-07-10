@@ -1,17 +1,34 @@
 "use client";
 
-import { ActionIcon, Anchor, Avatar, Badge, Card, Group, Image, ScrollArea, Stack, Text, Tooltip } from "@mantine/core";
-import { IconThumbDown, IconThumbUp } from "@tabler/icons-react";
+import {
+  ActionIcon,
+  Anchor,
+  Avatar,
+  Badge,
+  Box,
+  Card,
+  Group,
+  Image,
+  ScrollArea,
+  Stack,
+  Text,
+  Tooltip,
+} from "@mantine/core";
+import { IconSearch, IconThumbDown, IconThumbUp } from "@tabler/icons-react";
 
 import type { RouterInputs, RouterOutputs } from "@homarr/api";
 import { clientApi } from "@homarr/api/client";
 import { useRequiredBoard } from "@homarr/boards/context";
+import { toValidDate } from "@homarr/common";
 import type { MediaRequestStatus } from "@homarr/integrations/types";
 import { mediaAvailabilityConfiguration, mediaRequestStatusConfiguration } from "@homarr/integrations/types";
+import { openMediaRequestSearch } from "@homarr/spotlight";
 import { useScopedI18n } from "@homarr/translation/client";
 
+import { WidgetEmptyState } from "../../common/empty-state";
 import type { WidgetComponentProps } from "../../definition";
 import { NoIntegrationDataError } from "../../errors/no-data-integration";
+import classes from "../search-button.module.css";
 
 export default function MediaServerWidget({
   integrationIds,
@@ -19,66 +36,53 @@ export default function MediaServerWidget({
   options,
   width,
 }: WidgetComponentProps<"mediaRequests-requestList">) {
-  const [mediaRequests] = clientApi.widget.mediaRequests.getLatestRequests.useSuspenseQuery(
-    {
-      integrationIds,
-    },
-    {
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
-  );
-  const utils = clientApi.useUtils();
-  clientApi.widget.mediaRequests.subscribeToLatestRequests.useSubscription(
-    {
-      integrationIds,
-    },
-    {
-      onData(data) {
-        utils.widget.mediaRequests.getLatestRequests.setData({ integrationIds }, (prevData) => {
-          if (!prevData) return [];
+  const { data: mediaRequests } = clientApi.widget.mediaRequests.getLatestRequests.useQuery({
+    integrationIds,
+  });
 
-          const filteredData = prevData.filter(({ integrationId }) => integrationId !== data.integrationId);
-          const newData = filteredData.concat(
-            data.requests.map((request) => ({ ...request, integrationId: data.integrationId })),
-          );
-          return newData.sort((dataA, dataB) => {
-            if (dataA.status === dataB.status) {
-              return dataB.createdAt.getTime() - dataA.createdAt.getTime();
-            }
-
-            return (
-              mediaRequestStatusConfiguration[dataA.status].position -
-              mediaRequestStatusConfiguration[dataB.status].position
-            );
-          });
-        });
-      },
-    },
-  );
-
+  if (!mediaRequests) return <WidgetEmptyState />;
   if (mediaRequests.length === 0) throw new NoIntegrationDataError();
 
   return (
-    <ScrollArea
-      className="mediaRequests-list-scrollArea"
-      scrollbarSize="md"
-      style={{ pointerEvents: isEditMode ? "none" : undefined }}
-    >
-      <Stack className="mediaRequests-list-list" gap="xs" p="sm">
-        {mediaRequests.map((mediaRequest) => (
-          <MediaRequestCard
-            key={`${mediaRequest.integrationId}-${mediaRequest.id}`}
-            request={mediaRequest}
-            isTiny={width <= 256}
-            options={options}
-          />
-        ))}
-      </Stack>
-    </ScrollArea>
+    <Box className={classes.searchRoot}>
+      {!isEditMode && <MediaRequestSearchButton integrationIds={integrationIds} />}
+      <ScrollArea
+        className="mediaRequests-list-scrollArea"
+        scrollbarSize="md"
+        style={{ pointerEvents: isEditMode ? "none" : undefined }}
+      >
+        <Stack className="mediaRequests-list-list" gap="xs" p="sm">
+          {mediaRequests.map((mediaRequest) => (
+            <MediaRequestCard
+              key={`${mediaRequest.integrationId}-${mediaRequest.id}`}
+              request={mediaRequest}
+              isTiny={width <= 256}
+              options={options}
+            />
+          ))}
+        </Stack>
+      </ScrollArea>
+    </Box>
   );
 }
+
+const MediaRequestSearchButton = ({ integrationIds }: { integrationIds: string[] }) => {
+  const t = useScopedI18n("search.mode.media");
+
+  return (
+    <Tooltip label={t("action.search.label")}>
+      <ActionIcon
+        className={classes.searchButton}
+        variant="light"
+        size="sm"
+        aria-label={t("action.search.label")}
+        onClick={() => openMediaRequestSearch({ integrationIds })}
+      >
+        <IconSearch size={16} />
+      </ActionIcon>
+    </Tooltip>
+  );
+};
 
 interface MediaRequestCardProps {
   request: RouterOutputs["widget"]["mediaRequests"]["getLatestRequests"][number];
@@ -131,7 +135,7 @@ const MediaRequestCard = ({ request, isTiny, options }: MediaRequestCardProps) =
             <Group justify="space-between" gap="xs" className="mediaRequests-list-item-top-group">
               <Group gap="xs">
                 <Text className="mediaRequests-list-item-media-year" size="xs">
-                  {request.airDate?.getFullYear() ?? t("toBeDetermined")}
+                  {toValidDate(request.airDate)?.getFullYear() ?? t("toBeDetermined")}
                 </Text>
                 {!isTiny && (
                   <Badge
@@ -195,7 +199,10 @@ interface DecisionButtonsProps {
 }
 
 const DecisionButtons = ({ requestId, integrationId }: DecisionButtonsProps) => {
-  const { mutate: mutateRequestAnswer } = clientApi.widget.mediaRequests.answerRequest.useMutation();
+  const utils = clientApi.useUtils();
+  const { mutate: mutateRequestAnswer } = clientApi.widget.mediaRequests.answerRequest.useMutation({
+    onSettled: () => void utils.widget.mediaRequests.invalidate(),
+  });
   const t = useScopedI18n("widget.mediaRequests-requestList");
   const handleDecision = (answer: RouterInputs["widget"]["mediaRequests"]["answerRequest"]["answer"]) => {
     mutateRequestAnswer({

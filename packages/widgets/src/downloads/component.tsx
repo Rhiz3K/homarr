@@ -1,6 +1,7 @@
 "use client";
 
 import "../widgets-common.css";
+import "./styles.css";
 
 import { useCallback, useMemo, useState } from "react";
 import type { MantineStyleProp } from "@mantine/core";
@@ -87,21 +88,11 @@ export default function DownloadClientsWidget({
     integrationIds.includes(id) ? [id] : [],
   );
 
-  const [currentItems] = clientApi.widget.downloads.getJobsAndStatuses.useSuspenseQuery(
-    {
-      integrationIds,
-      limitPerIntegration: options.limitPerIntegration,
-    },
-    {
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      retry: false,
-    },
-  );
-  const utils = clientApi.useUtils();
+  const { data: currentItems = [] } = clientApi.widget.downloads.getJobsAndStatuses.useQuery({
+    integrationIds,
+    limitPerIntegration: options.limitPerIntegration,
+  });
 
-  //Translations
   const t = useScopedI18n("widget.downloads");
   const tCommon = useScopedI18n("common");
 
@@ -121,40 +112,13 @@ export default function DownloadClientsWidget({
     return statuses;
   }, [currentItems]);
 
-  //Get API mutation functions
-  const { mutate: mutateResumeItem } = clientApi.widget.downloads.resumeItem.useMutation();
-  const { mutate: mutatePauseItem } = clientApi.widget.downloads.pauseItem.useMutation();
-  const { mutate: mutateDeleteItem } = clientApi.widget.downloads.deleteItem.useMutation();
+  const utils = clientApi.useUtils();
+  const invalidateDownloads = { onSettled: () => void utils.widget.downloads.getJobsAndStatuses.invalidate() };
+  const { mutate: mutateResumeItem } = clientApi.widget.downloads.resumeItem.useMutation(invalidateDownloads);
+  const { mutate: mutatePauseItem } = clientApi.widget.downloads.pauseItem.useMutation(invalidateDownloads);
+  const { mutate: mutateDeleteItem } = clientApi.widget.downloads.deleteItem.useMutation(invalidateDownloads);
 
-  //Subscribe to dynamic data changes
-  clientApi.widget.downloads.subscribeToJobsAndStatuses.useSubscription(
-    {
-      integrationIds,
-      limitPerIntegration: options.limitPerIntegration,
-    },
-    {
-      onData: (data) => {
-        utils.widget.downloads.getJobsAndStatuses.setData(
-          { integrationIds, limitPerIntegration: options.limitPerIntegration },
-          (prevData) => {
-            return prevData?.map((item) => {
-              if (item.integration.id !== data.integration.id) return item;
-
-              return {
-                data: data.data,
-                integration: {
-                  ...data.integration,
-                  updatedAt: new Date(),
-                },
-              };
-            });
-          },
-        );
-      },
-    },
-  );
-
-  //Flatten Data array for which each element has it's integration, data (base + calculated) and actions. Memoized on data subscription
+  //Flatten Data array for which each element has its integration, data (base + calculated) and actions
   const data = useMemo<ExtendedDownloadClientItem[]>(
     () =>
       currentItems
@@ -530,6 +494,16 @@ export default function DownloadClientsWidget({
       },
       {
         ...columnsDefBase({ key: "time", showHeader: true }),
+        sortingFn: (rowA, rowB) => {
+          const timeA = rowA.getValue<ExtendedDownloadClientItem["time"]>("time");
+          const timeB = rowB.getValue<ExtendedDownloadClientItem["time"]>("time");
+          // Map time values to canonical sort keys:
+          // positive = ETA in ms (sort as-is, smaller = sooner)
+          // 0 = stalled/infinite (sort last in ascending = Infinity)
+          // negative = time since completion in ms (sort first in ascending = very negative)
+          const toSortKey = (time: number) => (time === 0 ? Infinity : time);
+          return toSortKey(timeA) - toSortKey(timeB);
+        },
         Cell: ({ cell }) => {
           const time = cell.getValue<ExtendedDownloadClientItem["time"]>();
           return time === 0 ? <IconInfinity size={16} /> : <Text size="xs">{dayjs().add(time).fromNow()}</Text>;
@@ -568,7 +542,7 @@ export default function DownloadClientsWidget({
     enableColumnOrdering: isEditMode,
     enableRowVirtualization: true,
     rowVirtualizerOptions: { overscan: 5 },
-    mantinePaperProps: { flex: 1, withBorder: false, shadow: undefined },
+    mantinePaperProps: { flex: 1, withBorder: false, shadow: undefined, bg: "transparent" },
     mantineTableContainerProps: { style: { height: "100%" } },
     mantineTableProps: {
       className: "downloads-widget-table",
@@ -775,8 +749,10 @@ const ClientsControl = ({ clients, filters, setFilters, availableStatuses }: Cli
     "/s",
   );
 
-  const { mutate: mutateResumeQueue } = clientApi.widget.downloads.resume.useMutation();
-  const { mutate: mutatePauseQueue } = clientApi.widget.downloads.pause.useMutation();
+  const utils = clientApi.useUtils();
+  const invalidateDownloads = { onSettled: () => void utils.widget.downloads.getJobsAndStatuses.invalidate() };
+  const { mutate: mutateResumeQueue } = clientApi.widget.downloads.resume.useMutation(invalidateDownloads);
+  const { mutate: mutatePauseQueue } = clientApi.widget.downloads.pause.useMutation(invalidateDownloads);
   const [opened, { open, close }] = useDisclosure(false);
   const t = useScopedI18n("widget.downloads");
   return (

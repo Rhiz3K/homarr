@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 
 import type { RouterOutputs } from "@homarr/api";
 import { clientApi } from "@homarr/api/client";
+import { getActiveQueryCacheBoardId, setActiveQueryCacheBoardId } from "@homarr/api/query-cache";
 
 import { updateBoardName } from "./updater";
 
@@ -19,14 +20,7 @@ export const BoardProvider = ({
 }: PropsWithChildren<{
   initialBoard: RouterOutputs["board"]["getBoardByName"];
 }>) => {
-  const { data } = clientApi.board.getBoardByName.useQuery(
-    { name: initialBoard.name },
-    {
-      initialData: initialBoard,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
-  );
+  const { data } = clientApi.board.getBoardByName.useQuery({ name: initialBoard.name }, { initialData: initialBoard });
 
   // Update the board name so it can be used within updateBoard method
   updateBoardName(initialBoard.name);
@@ -41,6 +35,16 @@ export const BoardProvider = ({
       void utils.board.getBoardByName.invalidate({ name: initialBoard.name });
     };
   }, [pathname, utils, initialBoard.name]);
+
+  useEffect(() => {
+    setActiveQueryCacheBoardId(data.id);
+
+    return () => {
+      if (getActiveQueryCacheBoardId() === data.id) {
+        setActiveQueryCacheBoardId(null);
+      }
+    };
+  }, [data.id]);
 
   return (
     <BoardContext.Provider
@@ -73,7 +77,7 @@ export const getCurrentLayout = (board: RouterOutputs["board"]["getBoardByName"]
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   if (typeof window === "undefined") return board.layouts.at(0)!.id;
 
-  const sortedLayouts = board.layouts.sort((layoutA, layoutB) => layoutB.breakpoint - layoutA.breakpoint);
+  const sortedLayouts = board.layouts.toSorted((layoutA, layoutB) => layoutB.breakpoint - layoutA.breakpoint);
 
   // Fallback to smallest if none exists with breakpoint smaller than window width
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

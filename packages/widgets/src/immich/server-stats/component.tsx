@@ -8,6 +8,7 @@ import { clientApi } from "@homarr/api/client";
 import { humanFileSize } from "@homarr/common";
 import { useI18n } from "@homarr/translation/client";
 
+import { WidgetEmptyState } from "../../common/empty-state";
 import type { WidgetComponentProps } from "../../definition";
 import classes from "./component.module.css";
 
@@ -16,9 +17,11 @@ export default function ImmichServerStatsWidget({
   options,
 }: WidgetComponentProps<"immich-serverStats">) {
   const t = useI18n();
-  const [stats] = clientApi.widget.immich.getServerStats.useSuspenseQuery({
+  const { data: stats } = clientApi.widget.immich.getServerStats.useQuery({
     integrationId: integrationIds[0] ?? "",
   });
+
+  if (!stats) return <WidgetEmptyState />;
 
   return (
     <Stack gap="md" h="100%" p="md">

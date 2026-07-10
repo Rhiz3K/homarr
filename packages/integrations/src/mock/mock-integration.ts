@@ -9,17 +9,20 @@ import type {
   ISystemHealthMonitoringIntegration,
 } from "../interfaces/health-monitoring/health-monitoring-integration";
 import type { IIndexerManagerIntegration } from "../interfaces/indexer-manager/indexer-manager-integration";
+import type { IMediaOrganizerIntegration } from "../interfaces/media-organizer/media-organizer-integration";
 import type { IMediaReleasesIntegration } from "../interfaces/media-releases";
 import type { IMediaRequestIntegration } from "../interfaces/media-requests/media-request-integration";
 import type { IMediaServerIntegration } from "../interfaces/media-server/media-server-integration";
 import type { IMediaTranscodingIntegration } from "../interfaces/media-transcoding/media-transcoding-integration";
 import type { NetworkControllerSummaryIntegration } from "../interfaces/network-controller-summary/network-controller-summary-integration";
 import type { ISmartHomeIntegration } from "../interfaces/smart-home/smart-home-integration";
+import type { IUpsSummaryIntegration } from "../interfaces/ups-summary/ups-summary-integration";
 import { CalendarMockService } from "./data/calendar";
 import { ClusterHealthMonitoringMockService } from "./data/cluster-health-monitoring";
 import { DnsHoleMockService } from "./data/dns-hole";
 import { DownloadClientMockService } from "./data/download";
 import { IndexerManagerMockService } from "./data/indexer-manager";
+import { MediaOrganizerMockService } from "./data/media-organizer";
 import { MediaReleasesMockService } from "./data/media-releases";
 import { MediaRequestMockService } from "./data/media-request";
 import { MediaServerMockService } from "./data/media-server";
@@ -28,6 +31,8 @@ import { NetworkControllerSummaryMockService } from "./data/network-controller-s
 import { NotificationsMockService } from "./data/notifications";
 import { SmartHomeMockService } from "./data/smart-home";
 import { SystemHealthMonitoringMockService } from "./data/system-health-monitoring";
+import { BeszelMockService } from "./data/beszel";
+import { UpsSummaryMockService } from "./data/ups-summary";
 
 export class MockIntegration
   extends Integration
@@ -38,12 +43,14 @@ export class MockIntegration
     IClusterHealthMonitoringIntegration,
     ISystemHealthMonitoringIntegration,
     IIndexerManagerIntegration,
+    IMediaOrganizerIntegration,
     IMediaReleasesIntegration,
     IMediaRequestIntegration,
     IMediaServerIntegration,
     IMediaTranscodingIntegration,
     NetworkControllerSummaryIntegration,
-    ISmartHomeIntegration
+    ISmartHomeIntegration,
+    IUpsSummaryIntegration
 {
   private static readonly dnsHole = new DnsHoleMockService();
   private static readonly calendar = new CalendarMockService();
@@ -51,6 +58,7 @@ export class MockIntegration
   private static readonly clusterMonitoring = new ClusterHealthMonitoringMockService();
   private static readonly systemMonitoring = new SystemHealthMonitoringMockService();
   private static readonly indexerManager = new IndexerManagerMockService();
+  private static readonly mediaOrganizer = new MediaOrganizerMockService();
   private static readonly mediaReleases = new MediaReleasesMockService();
   private static readonly mediaRequest = new MediaRequestMockService();
   private static readonly mediaServer = new MediaServerMockService();
@@ -58,6 +66,8 @@ export class MockIntegration
   private static readonly networkController = new NetworkControllerSummaryMockService();
   private static readonly notifications = new NotificationsMockService();
   private static readonly smartHome = new SmartHomeMockService();
+  private static readonly beszel = new BeszelMockService();
+  private static readonly upsSummary = new UpsSummaryMockService();
 
   protected async testingAsync(_: IntegrationTestingInput): Promise<TestingResult> {
     return await Promise.resolve({
@@ -85,11 +95,15 @@ export class MockIntegration
 
   // Health Monitoring Integrations
   getSystemInfoAsync = MockIntegration.systemMonitoring.getSystemInfoAsync.bind(MockIntegration.systemMonitoring);
-  getClusterInfoAsync = MockIntegration.clusterMonitoring.getClusterInfoAsync.bind(MockIntegration.downloadClient);
+  getClusterInfoAsync = MockIntegration.clusterMonitoring.getClusterInfoAsync.bind(MockIntegration.clusterMonitoring);
 
   // IndexerManagerIntegration
   getIndexersAsync = MockIntegration.indexerManager.getIndexersAsync.bind(MockIntegration.indexerManager);
   testAllAsync = MockIntegration.indexerManager.testAllAsync.bind(MockIntegration.indexerManager);
+
+  // MediaOrganizerIntegration
+  getMissingAsync = MockIntegration.mediaOrganizer.getMissingAsync.bind(MockIntegration.mediaOrganizer);
+  getMediaQueueAsync = MockIntegration.mediaOrganizer.getMediaQueueAsync.bind(MockIntegration.mediaOrganizer);
 
   // MediaReleasesIntegration
   getMediaReleasesAsync = MockIntegration.mediaReleases.getMediaReleasesAsync.bind(MockIntegration.mediaReleases);
@@ -104,7 +118,7 @@ export class MockIntegration
   declineRequestAsync = MockIntegration.mediaRequest.declineRequestAsync.bind(MockIntegration.mediaRequest);
 
   // MediaServerIntegration
-  getCurrentSessionsAsync = MockIntegration.mediaServer.getCurrentSessionsAsync.bind(MockIntegration.mediaRequest);
+  getCurrentSessionsAsync = MockIntegration.mediaServer.getCurrentSessionsAsync.bind(MockIntegration.mediaServer);
 
   // MediaTranscodingIntegration
   getStatisticsAsync = MockIntegration.mediaTranscoding.getStatisticsAsync.bind(MockIntegration.mediaTranscoding);
@@ -123,4 +137,16 @@ export class MockIntegration
   getEntityStateAsync = MockIntegration.smartHome.getEntityStateAsync.bind(MockIntegration.smartHome);
   triggerAutomationAsync = MockIntegration.smartHome.triggerAutomationAsync.bind(MockIntegration.smartHome);
   triggerToggleAsync = MockIntegration.smartHome.triggerToggleAsync.bind(MockIntegration.smartHome);
+
+  // UpsSummaryIntegration
+  getUpsSummariesAsync = MockIntegration.upsSummary.getUpsSummariesAsync.bind(MockIntegration.upsSummary);
+
+  // BeszelIntegration
+  getSystemsAsync = MockIntegration.beszel.getSystemsAsync.bind(MockIntegration.beszel);
+  getSystemDetailsAsync = MockIntegration.beszel.getSystemDetailsAsync.bind(MockIntegration.beszel);
+  getSystemStatsAsync = MockIntegration.beszel.getSystemStatsAsync.bind(MockIntegration.beszel);
+  getContainerStatsAsync = MockIntegration.beszel.getContainerStatsAsync.bind(MockIntegration.beszel);
+  getAlertsAsync = MockIntegration.beszel.getAlertsAsync.bind(MockIntegration.beszel);
+  getAlertHistoryAsync = MockIntegration.beszel.getAlertHistoryAsync.bind(MockIntegration.beszel);
+  subscribeRealtimeMetrics = MockIntegration.beszel.subscribeRealtimeMetrics.bind(MockIntegration.beszel);
 }

@@ -60,6 +60,9 @@ export class OverseerrIntegration
       text: "overview" in result ? result.overview : undefined,
       type: result.mediaType,
       inLibrary: result.mediaInfo !== undefined,
+      availability: result.mediaInfo
+        ? this.mapAvailability(result.mediaInfo.status as UpstreamMediaAvailability, false)
+        : undefined,
     }));
   }
 
@@ -70,7 +73,12 @@ export class OverseerrIntegration
         "X-Api-Key": this.getSecretValue("apiKey"),
       },
     });
-    return await mediaInformationSchema.parseAsync(await response.json());
+    const data = await mediaInformationSchema.parseAsync(await response.json());
+    const requestedSeasons = [
+      ...new Set(data.mediaInfo?.requests?.flatMap((req) => req.seasons.map((s) => s.seasonNumber)) ?? []),
+    ];
+    const { mediaInfo: _strip, ...rest } = data;
+    return { ...rest, requestedSeasons };
   }
 
   /**
@@ -124,11 +132,14 @@ export class OverseerrIntegration
       },
     );
 
-    const allRequests = await fetchWithTrustedCertificatesAsync(this.url("/api/v1/request", { take: 20 }), {
-      headers: {
-        "X-Api-Key": this.getSecretValue("apiKey"),
+    const allRequests = await fetchWithTrustedCertificatesAsync(
+      this.url("/api/v1/request", { take: 20, sort: "modified" }),
+      {
+        headers: {
+          "X-Api-Key": this.getSecretValue("apiKey"),
+        },
       },
-    });
+    );
 
     const pendingResults = (await getRequestsSchema.parseAsync(await pendingRequests.json())).results;
     const allResults = (await getRequestsSchema.parseAsync(await allRequests.json())).results;
@@ -341,6 +352,22 @@ interface MovieInformation {
   releaseDate: string;
 }
 
+const mediaInfoRequestsSchema = z
+  .object({
+    requests: z
+      .array(
+        z.object({
+          seasons: z.array(
+            z.object({
+              seasonNumber: z.number(),
+            }),
+          ),
+        }),
+      )
+      .optional(),
+  })
+  .optional();
+
 const mediaInformationSchema = z.union([
   z.object({
     id: z.number(),
@@ -355,13 +382,21 @@ const mediaInformationSchema = z.union([
     ),
     numberOfSeasons: z.number(),
     posterPath: z.string().startsWith("/"),
+    mediaInfo: mediaInfoRequestsSchema,
   }),
   z.object({
     id: z.number(),
     overview: z.string(),
     posterPath: z.string().startsWith("/"),
+    mediaInfo: mediaInfoRequestsSchema,
   }),
 ]);
+
+const searchMediaInfoSchema = z
+  .object({
+    status: z.number(),
+  })
+  .optional();
 
 const searchSchema = z.object({
   results: z
@@ -373,7 +408,7 @@ const searchSchema = z.object({
           name: z.string(),
           posterPath: z.string().startsWith("/").endsWith(".jpg").nullable(),
           overview: z.string(),
-          mediaInfo: z.object({}).optional(),
+          mediaInfo: searchMediaInfoSchema,
         }),
         z.object({
           id: z.number(),
@@ -381,14 +416,14 @@ const searchSchema = z.object({
           title: z.string(),
           posterPath: z.string().startsWith("/").endsWith(".jpg").nullable(),
           overview: z.string(),
-          mediaInfo: z.object({}).optional(),
+          mediaInfo: searchMediaInfoSchema,
         }),
         z.object({
           id: z.number(),
           mediaType: z.literal("person"),
           name: z.string(),
           profilePath: z.string().startsWith("/").endsWith(".jpg").nullable(),
-          mediaInfo: z.object({}).optional(),
+          mediaInfo: searchMediaInfoSchema,
         }),
       ]),
     )

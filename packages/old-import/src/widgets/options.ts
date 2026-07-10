@@ -44,6 +44,7 @@ const optionMapping: OptionMapping = {
     hideIcon: (oldOptions) => oldOptions.items.some((item) => item.hideIcon),
     hideHostname: (oldOptions) => oldOptions.items.some((item) => item.hideHostname),
     openNewTab: (oldOptions) => oldOptions.items.some((item) => item.openNewTab),
+    withBorder: () => undefined,
   },
   calendar: {
     releaseType: (oldOptions) => [oldOptions.radarrReleaseType],
@@ -164,6 +165,7 @@ const optionMapping: OptionMapping = {
       "sectionIndicatorColor" in oldOptions ? oldOptions.sectionIndicatorColor : undefined,
     showUptime: () => undefined,
     gpu: () => undefined,
+    visibleStorageVolumes: () => undefined,
     visibleClusterSections: (oldOptions) => {
       if (!("showNode" in oldOptions)) return undefined;
 

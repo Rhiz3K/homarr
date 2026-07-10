@@ -14,6 +14,8 @@ interface DynamicBreadcrumbProps {
   nonInteractable?: string[];
 }
 
+const categorySegments = new Set(["tools"]);
+
 /**
  * Breadcrumb is client side rendered. Elements are automatically
  * calculated and translated using dynamic keys.
@@ -58,17 +60,24 @@ export const DynamicBreadcrumb = ({
         }
         const href = `/${pathnameParts.slice(0, index + 1).join("/")}`;
         const translationKey = `${pathnameParts.slice(0, index + 1).join(".")}`;
+        const mappedValue = dynamicMappings?.get(pathnamePart);
 
-        if (nonInteractable?.includes(pathnamePart)) {
-          return <Text key={href}>{t(`${translationKey}.label` as TranslationKeys)}</Text>;
-        }
+        const isNonInteractable =
+          nonInteractable?.includes(pathnamePart) === true || categorySegments.has(pathnamePart);
 
-        if (dynamicMappings?.has(pathnamePart)) {
+        if (mappedValue) {
+          if (isNonInteractable) {
+            return <Text key={href}>{mappedValue}</Text>;
+          }
           return (
             <Anchor key={href} href={href}>
-              {dynamicMappings.get(pathnamePart)}
+              {mappedValue}
             </Anchor>
           );
+        }
+
+        if (isNonInteractable) {
+          return <Text key={href}>{t(`${translationKey}.label` as TranslationKeys)}</Text>;
         }
 
         return (

@@ -8,36 +8,15 @@ import type { SpeedtestTrackerDashboardData } from "@homarr/integrations/types";
 import { useScopedI18n } from "@homarr/translation/client";
 
 import type { WidgetComponentProps } from "../definition";
+import { WidgetEmptyState } from "../common/empty-state";
 import { AveragesSection } from "./averages";
 import { mergeStats } from "./helpers";
 import { LatestResultSection } from "./latest-result";
 import { RecentResultsSection } from "./recent-results";
 
-export default function SpeedtestTrackerWidget({
-  options,
-  integrationIds,
-  isEditMode,
-}: WidgetComponentProps<"speedtestTracker">) {
+export default function SpeedtestTrackerWidget({ options, integrationIds }: WidgetComponentProps<"speedtestTracker">) {
   const t = useScopedI18n("widget.speedtestTracker");
-  const [dashboardData] = clientApi.widget.speedtestTracker.getDashboard.useSuspenseQuery({ integrationIds });
-
-  const utils = clientApi.useUtils();
-  clientApi.widget.speedtestTracker.subscribeToDashboard.useSubscription(
-    { integrationIds },
-    {
-      enabled: !isEditMode,
-      onData(newData) {
-        utils.widget.speedtestTracker.getDashboard.setData({ integrationIds }, (prevData) => {
-          if (!prevData) return prevData;
-          return prevData.map((instance) =>
-            instance.integrationId === newData.integrationId
-              ? { ...instance, dashboard: newData.dashboard, updatedAt: newData.timestamp }
-              : instance,
-          );
-        });
-      },
-    },
-  );
+  const { data: dashboardData = [] } = clientApi.widget.speedtestTracker.getDashboard.useQuery({ integrationIds });
 
   const combined = useMemo(
     () =>
@@ -86,6 +65,7 @@ export default function SpeedtestTrackerWidget({
           {t("noSectionsEnabled")}
         </Text>
       )}
+      {!noSectionsEnabled && !hasStatSection && !hasChart && <WidgetEmptyState />}
     </Stack>
   );
 }

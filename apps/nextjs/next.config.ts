@@ -10,13 +10,13 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 // Package path does not work... so we need to use relative path
 const withNextIntl = createNextIntlPlugin({
-  experimental: {
-    createMessagesDeclaration: "../../packages/translation/src/lang/en.json",
-  },
   requestConfig: "../../packages/translation/src/request.ts",
 });
 
 const nextConfig: NextConfig = {
+  env: {
+    HOMARR_VERSION: process.env.HOMARR_VERSION ?? "unknown",
+  },
   output: "standalone",
   reactStrictMode: true,
   // react compiler breaks mantine-react-table, so disabled for now
@@ -27,12 +27,22 @@ const nextConfig: NextConfig = {
    * dockerode is required in the external server packages because of https://github.com/homarr-labs/homarr/issues/612
    * isomorphic-dompurify and jsdom are required, see https://github.com/kkomelin/isomorphic-dompurify/issues/356
    */
-  serverExternalPackages: ["dockerode", "isomorphic-dompurify", "jsdom"],
+  serverExternalPackages: ["dockerode", "isomorphic-dompurify", "jsdom", "better-sqlite3"],
   experimental: {
     optimizePackageImports: ["@mantine/core", "@mantine/hooks", "@tabler/icons-react"],
     turbopackFileSystemCacheForDev: true,
-    preloadEntriesOnStart: false,
     webpackMemoryOptimizations: true,
+  },
+  turbopack: {
+    // ponytail: known Turbopack NFT warning from path.join(process.cwd(), …) in
+    // src/app/api/backup/{route,shared}.ts. No working placement in 16.2.x
+    // (see vercel/next.js#95125). Suppress until upstream fix lands.
+    ignoreIssue: [
+      {
+        path: "**/*",
+        title: "Encountered unexpected file in NFT list",
+      },
+    ],
   },
   transpilePackages: ["@homarr/ui", "@homarr/notifications", "@homarr/modals", "@homarr/spotlight", "@homarr/widgets"],
   images: {

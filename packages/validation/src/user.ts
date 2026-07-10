@@ -6,6 +6,7 @@ import type { TranslationObject } from "@homarr/translation";
 
 import { zodEnumFromArray } from "./enums";
 import { createCustomErrorParams } from "./form/i18n";
+import { nullableEmailSchema, optionalEmailSchema } from "./email";
 
 // We always want the lowercase version of the username to compare it in a case-insensitive way
 export const usernameSchema = z.string().trim().toLowerCase().min(3).max(255);
@@ -19,24 +20,10 @@ export const passwordRequirements = [
   { check: regexCheck(/[$&+,:;=?@#|'<>.^*()%!\-~`"_/\\[\]{}]/), value: "special" },
 ] satisfies {
   check: (value: string) => boolean;
-  value: keyof TranslationObject["user"]["field"]["password"]["requirement"];
+  value: keyof TranslationObject["user"]["field"]["password"]["suggestion"];
 }[];
 
-export const userPasswordSchema = z
-  .string()
-  .min(8)
-  .max(255)
-  .refine(
-    (value) => {
-      return passwordRequirements.every((requirement) => requirement.check(value));
-    },
-    {
-      params: createCustomErrorParams({
-        key: "passwordRequirements",
-        params: {},
-      }),
-    },
-  );
+export const userPasswordSchema = z.string().min(8).max(255);
 
 const addConfirmPasswordRefinement = <
   TSchema extends z.ZodObject<{ password: z.core.$ZodString; confirmPassword: z.core.$ZodString }, z.core.$strip>,
@@ -56,7 +43,7 @@ export const userBaseCreateSchema = z.object({
   username: usernameSchema,
   password: userPasswordSchema,
   confirmPassword: z.string(),
-  email: z.string().email().or(z.string().length(0)).optional(),
+  email: optionalEmailSchema,
 });
 
 export const userCreateSchema = addConfirmPasswordRefinement(userBaseCreateSchema).and(
@@ -99,13 +86,7 @@ export const userRegistrationApiSchema = userRegistrationSchema.and(
 export const userEditProfileSchema = z.object({
   id: z.string(),
   name: usernameSchema,
-  email: z
-    .string()
-    .email()
-    .or(z.literal(""))
-    .transform((value) => (value === "" ? null : value))
-    .optional()
-    .nullable(),
+  email: nullableEmailSchema,
 });
 
 const baseChangePasswordSchema = z.object({
