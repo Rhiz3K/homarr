@@ -46,9 +46,10 @@ The Hermes Agent widget summarizes gateway health and readiness, installed versi
 - Medium tiles add platforms, toolsets, agents, and sessions.
 - Large tiles show optional platform, recent-session, scheduled-job, and toolset sections. Each section can be disabled in the widget configuration.
 - Dashboard mode adds direct links to matching Hermes dashboard sections. API server mode displays the same read-only data without invalid dashboard links.
+- Scheduled jobs show only their name, state, and schedule. Raw job prompts and scripts are never exposed in the widget because they can contain sensitive values.
 
 ### Data modes and refresh
 
-API server mode on port `8642` is recommended and provides authenticated sessions, jobs, skills, and toolsets. Dashboard compatibility mode on port `9119` always uses the public status endpoint; protected detail endpoints are marked unavailable instead of being displayed as empty.
+API server mode on port `8642` supports both bearer-authenticated and explicitly unauthenticated servers. Dashboard mode on port `9119` uses the public status endpoint and, when the dashboard exposes its short-lived session token, also loads sessions, jobs, skills, and toolsets. Detail endpoints that are unavailable are labeled as unavailable instead of being displayed as empty.
 
 Data is cached for 30 seconds and refreshed in the background. Update checks that access GitHub are cached for one hour and are skipped when external connections are disabled.

@@ -7,6 +7,7 @@ import { fetchWithTrustedCertificatesAsync } from "@homarr/core/infrastructure/h
 
 import type { IntegrationTestingInput } from "../../base/integration";
 import { HermesAgentIntegration } from "../hermes-agent-integration";
+import { hermesJobSchema } from "../hermes-agent-types";
 
 vi.mock("@homarr/core/infrastructure/http", () => ({
   fetchWithTrustedCertificatesAsync: vi.fn(),
@@ -72,6 +73,18 @@ const setupMockFetch = (responses: Record<string, MockResponseData>) => {
 describe("HermesAgentIntegration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  test("job data strips raw prompts that may contain secrets", () => {
+    const job = hermesJobSchema.parse({
+      id: "backup-job",
+      name: "Backup",
+      prompt: "run backup with password=secret-value",
+      schedule: "0 3 * * *",
+      enabled: true,
+    });
+
+    expect(job).not.toHaveProperty("prompt");
   });
 
   test("testingAsync checks health and authenticated capabilities", async () => {
@@ -163,6 +176,42 @@ describe("HermesAgentIntegration", () => {
 
     expect(result.success).toBe(true);
     expect(fetchAsync).toHaveBeenCalledTimes(2);
+  });
+
+  test("testingAsync accepts a dashboard that serves HTML from the health route", async () => {
+    const requestedPaths: string[] = [];
+    const fetchAsync = vi.fn((url: Parameters<IntegrationTestingInput["fetchAsync"]>[0]) => {
+      const path = getPathname(url);
+      requestedPaths.push(path);
+      if (path === "/health") {
+        return Promise.resolve(
+          new Response("<!doctype html><html><body>Hermes Control Center</body></html>", {
+            status: 200,
+            headers: { "content-type": "text/html" },
+          }),
+        );
+      }
+      if (path === "/api/status") {
+        return Promise.resolve(
+          createResponse({
+            version: "0.18.2",
+            release_date: "2026.7.1",
+            gateway_running: true,
+            gateway_state: "running",
+            gateway_platforms: { telegram: { state: "connected" } },
+            active_sessions: 1,
+          }),
+        );
+      }
+      return Promise.resolve(createResponse({ error: "Not Found" }, 404));
+    }) as IntegrationTestingInput["fetchAsync"];
+
+    const integration = createHermesAgentIntegration([]);
+    const result = await integration.callTestingAsync(fetchAsync);
+
+    expect(result.success).toBe(true);
+    expect(fetchAsync).toHaveBeenCalledTimes(2);
+    expect(requestedPaths).toEqual(["/health", "/api/status"]);
   });
 
   test("testingAsync rejects an unrelated empty status response", async () => {

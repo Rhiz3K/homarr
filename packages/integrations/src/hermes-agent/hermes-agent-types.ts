@@ -175,7 +175,6 @@ export const hermesJobSchema = z
     name: z.string().nullish(),
     schedule: hermesJobScheduleSchema.nullish(),
     schedule_display: z.string().nullish(),
-    prompt: z.string().nullish(),
     deliver: z.string().nullish(),
     enabled: z.boolean().nullish(),
     paused: z.boolean().nullish(),

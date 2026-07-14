@@ -107,11 +107,6 @@ export function JobsList({ jobs }: JobsListProps) {
                 {isFailed ? t("jobs.failedLabel") : isPaused ? t("jobs.paused") : t("jobs.enabled")}
               </Badge>
             </Group>
-            {job.prompt && (
-              <Text size="xs" c="dimmed" lineClamp={1}>
-                {job.prompt}
-              </Text>
-            )}
             <Text size="xs" c="dimmed">
               {job.schedule ?? t("jobs.noSchedule")}
               {job.next_run_at ? ` - ${t("jobs.next", { when: dayjs(job.next_run_at).fromNow() })}` : ""}

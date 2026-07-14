@@ -41,21 +41,21 @@ export class HermesAgentIntegration extends Integration {
     const healthResponse = await input.fetchAsync(this.url("/health"), {
       headers: { Accept: "application/json" },
     });
+    const healthData = healthResponse.ok ? await healthResponse.json().catch(() => null) : null;
+    const isApiServer = hermesHealthSchema.safeParse(healthData).success;
 
-    if (!healthResponse.ok) {
+    if (!isApiServer) {
       const dashboardStatusResponse = await input.fetchAsync(this.url("/api/status"), {
         headers: { Accept: "application/json" },
       });
 
       if (!dashboardStatusResponse.ok) {
-        throw new ResponseError(healthResponse);
+        throw new ResponseError(healthResponse.ok ? dashboardStatusResponse : healthResponse);
       }
 
       hermesDashboardStatusSchema.parse(await dashboardStatusResponse.json());
       return { success: true };
     }
-
-    hermesHealthSchema.parse(await healthResponse.json());
 
     const capabilitiesResponse = await input.fetchAsync(this.url("/v1/capabilities"), {
       headers: this.getAuthHeaders(),
