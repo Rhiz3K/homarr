@@ -12,4 +12,5 @@ export const hermesAgentRequestHandler = createIntegrationRequestHandler<
     const integrationInstance = await createIntegrationAsync(integration);
     return await integrationInstance.getOverviewAsync();
   },
+  cacheTtlMs: 30_000,
 });

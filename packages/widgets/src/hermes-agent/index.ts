@@ -6,7 +6,12 @@ import { optionsBuilder } from "../options";
 export const { definition, componentLoader } = createWidgetDefinition("hermesAgent", {
   icon: IconRobot,
   createOptions() {
-    return optionsBuilder.from(() => ({}));
+    return optionsBuilder.from((factory) => ({
+      showPlatforms: factory.switch({ defaultValue: true, withDescription: true }),
+      showSessions: factory.switch({ defaultValue: true, withDescription: true }),
+      showJobs: factory.switch({ defaultValue: true, withDescription: true }),
+      showToolsets: factory.switch({ defaultValue: true, withDescription: true }),
+    }));
   },
   supportedIntegrations: ["hermesAgent"],
   errors: {

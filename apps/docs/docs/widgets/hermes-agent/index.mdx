@@ -1,0 +1,54 @@
+---
+title: "Hermes Agent"
+description: "Responsive Hermes Agent gateway, readiness, activity, capability, and update overview."
+hide_title: true
+---
+
+import { WidgetHeader } from "@site/src/components/widgets/header";
+import { AddingWidget } from "@site/src/components/widgets/adding";
+import { WidgetConfig } from "@site/src/components/widgets/configuration";
+import { WidgetIntegrations } from "@site/src/components/widgets/integrations";
+import { hermesAgentWidget } from ".";
+import { hermesAgentIntegration } from "@site/docs/integrations/hermes-agent";
+
+<WidgetHeader widget={hermesAgentWidget} categories={["AI", "Automation", "System monitoring"]} />
+
+The Hermes Agent widget summarizes gateway health and readiness, installed version and update state, connected messaging platforms, active agents and sessions, scheduled jobs, skills, and toolsets. Its layout adapts from a compact status strip to a detailed operations view.
+
+### Supported Integrations
+
+<WidgetIntegrations items={[{ integration: hermesAgentIntegration }]} />
+
+### Adding the widget
+
+<AddingWidget />
+
+### Configuration
+
+<WidgetConfig configuration={hermesAgentWidget.configuration} />
+
+### Summary metrics
+
+| Metric        | Description                                                                                              |
+| ------------- | -------------------------------------------------------------------------------------------------------- |
+| **Version**   | Hermes Agent application version reported by the API server or dashboard.                                |
+| **Update**    | Whether the dashboard release is current, has a newer release, or is commits behind the upstream branch. |
+| **Jobs**      | Active scheduled jobs compared with all reported jobs; failed jobs use an error state.                   |
+| **Skills**    | Enabled skills compared with all discovered skills.                                                      |
+| **Platforms** | Connected messaging platforms compared with all configured platforms.                                    |
+| **Toolsets**  | Enabled toolsets compared with all discovered toolsets.                                                  |
+| **Agents**    | Agents currently active in the gateway.                                                                  |
+| **Sessions**  | Active or recently returned sessions, depending on the selected Hermes surface.                          |
+
+### Responsive layout
+
+- Small tiles prioritize version, update, job, and skill health.
+- Medium tiles add platforms, toolsets, agents, and sessions.
+- Large tiles show optional platform, recent-session, scheduled-job, and toolset sections. Each section can be disabled in the widget configuration.
+- Dashboard mode adds direct links to matching Hermes dashboard sections. API server mode displays the same read-only data without invalid dashboard links.
+
+### Data modes and refresh
+
+API server mode on port `8642` is recommended and provides authenticated sessions, jobs, skills, and toolsets. Dashboard compatibility mode on port `9119` always uses the public status endpoint; protected detail endpoints are marked unavailable instead of being displayed as empty.
+
+Data is cached for 30 seconds and refreshed in the background. Update checks that access GitHub are cached for one hour and are skipped when external connections are disabled.

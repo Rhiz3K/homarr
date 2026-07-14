@@ -5,6 +5,7 @@ const hermesPrimitiveSchema = z.union([z.string(), z.number(), z.boolean(), z.nu
 export const hermesHealthSchema = z.object({
   status: z.string(),
   platform: z.string().nullish(),
+  version: z.string().nullish(),
 });
 
 export type HermesHealth = z.infer<typeof hermesHealthSchema>;
@@ -21,6 +22,13 @@ export const hermesDetailedHealthSchema = hermesHealthSchema.extend({
   gateway_state: z.string().nullish(),
   platforms: z.record(z.string(), hermesPlatformStatusSchema).default({}),
   active_agents: z.number().default(0),
+  gateway_busy: z.boolean().nullish(),
+  gateway_drainable: z.boolean().nullish(),
+  readiness: z
+    .object({
+      status: z.string().nullish(),
+    })
+    .nullish(),
   exit_reason: z.string().nullish(),
   updated_at: z.string().nullish(),
   pid: z.number().nullish(),
@@ -39,21 +47,44 @@ export const hermesCapabilitiesSchema = z.object({
     })
     .nullish(),
   features: z.record(z.string(), hermesPrimitiveSchema).default({}),
+  runtime: z
+    .object({
+      mode: z.string().nullish(),
+      tool_execution: z.string().nullish(),
+      split_runtime: z.boolean().nullish(),
+      description: z.string().nullish(),
+    })
+    .nullish(),
+  endpoints: z
+    .record(
+      z.string(),
+      z.object({
+        method: z.string(),
+        path: z.string(),
+      }),
+    )
+    .default({}),
 });
 
 export type HermesCapabilities = z.infer<typeof hermesCapabilitiesSchema>;
 
 export const hermesDashboardStatusSchema = z.object({
-  version: z.string().nullish(),
+  version: z.string(),
   release_date: z.string().nullish(),
   config_version: z.number().nullish(),
   latest_config_version: z.number().nullish(),
-  gateway_running: z.boolean().nullish(),
+  gateway_running: z.boolean(),
   gateway_state: z.string().nullish(),
   gateway_platforms: z.record(z.string(), hermesPlatformStatusSchema).default({}),
   gateway_exit_reason: z.string().nullish(),
   gateway_updated_at: z.string().nullish(),
   active_sessions: z.number().nullish(),
+  active_agents: z.number().nullish(),
+  gateway_busy: z.boolean().nullish(),
+  gateway_drainable: z.boolean().nullish(),
+  profiles: z.array(z.string()).default([]),
+  gateway_mode: z.string().nullish(),
+  nous_session_valid: z.string().nullish(),
   auth_required: z.boolean().nullish(),
   auth_providers: z.array(z.string()).default([]),
 });
@@ -62,13 +93,16 @@ export type HermesDashboardStatus = z.infer<typeof hermesDashboardStatusSchema>;
 
 export const hermesSkillSchema = z.object({
   name: z.string(),
+  description: z.string().nullish(),
   category: z.string().nullish(),
   enabled: z.boolean().nullish(),
 });
 
 export type HermesSkill = z.infer<typeof hermesSkillSchema>;
 
-export const hermesSkillsResponseSchema = z.array(hermesSkillSchema);
+export const hermesSkillsResponseSchema = z
+  .union([z.array(hermesSkillSchema), z.object({ data: z.array(hermesSkillSchema) })])
+  .transform((value) => (Array.isArray(value) ? value : value.data));
 
 export const hermesReleaseSchema = z.object({
   tag_name: z.string(),
@@ -112,7 +146,7 @@ export const hermesSessionSchema = z.object({
   output_tokens: z.number().nullish(),
   estimated_cost_usd: z.number().nullish(),
   actual_cost_usd: z.number().nullish(),
-  last_active: z.string().nullish(),
+  last_active: z.union([z.string(), z.number()]).nullish(),
   preview: z.string().nullish(),
 });
 
@@ -187,6 +221,7 @@ export const hermesToolsetsResponseSchema = z
   .transform((value) => (Array.isArray(value) ? value : value.data));
 
 export interface HermesAgentOverview {
+  mode: "apiServer" | "dashboard";
   health: HermesDetailedHealth;
   capabilities: HermesCapabilities;
   models: HermesModel[];
@@ -196,4 +231,10 @@ export interface HermesAgentOverview {
   dashboardStatus: HermesDashboardStatus | null;
   skills: HermesSkill[];
   update: HermesUpdateStatus | null;
+  dataAvailability: {
+    sessions: boolean;
+    jobs: boolean;
+    toolsets: boolean;
+    skills: boolean;
+  };
 }

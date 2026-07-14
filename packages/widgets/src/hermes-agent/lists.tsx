@@ -4,7 +4,7 @@ import { Badge, Group, Stack, Text } from "@mantine/core";
 import type { HermesJob, HermesSession, HermesToolset, HermesPlatformStatus } from "@homarr/integrations/types";
 import { useScopedI18n } from "@homarr/translation/client";
 
-import { formatTokenCount, getJobKey, getStatusColor } from "./utils";
+import { formatTokenCount, getHermesDate, getJobKey, getStatusColor, isJobFailed, isJobPaused } from "./utils";
 
 interface PlatformsListProps {
   platforms: Record<string, HermesPlatformStatus>;
@@ -74,7 +74,7 @@ export function SessionsList({ sessions }: SessionsListProps) {
               tools: `${session.tool_call_count ?? 0}`,
               tokens: formatTokenCount((session.input_tokens ?? 0) + (session.output_tokens ?? 0)),
             })}
-            {session.last_active ? ` - ${dayjs(session.last_active).fromNow()}` : ""}
+            {session.last_active ? ` - ${getHermesDate(session.last_active).fromNow()}` : ""}
           </Text>
         </Stack>
       ))}
@@ -95,15 +95,16 @@ export function JobsList({ jobs }: JobsListProps) {
   return (
     <Stack gap={6}>
       {visibleJobs.map((job, index) => {
-        const isPaused = job.paused === true || job.enabled === false;
+        const isFailed = isJobFailed(job);
+        const isPaused = isJobPaused(job);
         return (
           <Stack key={getJobKey(job, index)} gap={1}>
             <Group justify="space-between" wrap="nowrap" gap="xs">
               <Text size="xs" fw={500} lineClamp={1}>
                 {job.name ?? job.id ?? job.job_id ?? t("jobs.unnamed")}
               </Text>
-              <Badge size="xs" variant="light" color={isPaused ? "yellow" : "green"}>
-                {isPaused ? t("jobs.paused") : t("jobs.enabled")}
+              <Badge size="xs" variant="light" color={isFailed ? "red" : isPaused ? "yellow" : "green"}>
+                {isFailed ? t("jobs.failedLabel") : isPaused ? t("jobs.paused") : t("jobs.enabled")}
               </Badge>
             </Group>
             {job.prompt && (

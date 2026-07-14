@@ -15,7 +15,7 @@ export const hermesAgentRouter = createTRPCRouter({
         return {
           integrationId: integration.id,
           integrationName: integration.name,
-          integrationUrl: integration.url,
+          integrationUrl: integration.externalUrl ?? integration.url,
           overview: data,
           updatedAt: timestamp,
         };

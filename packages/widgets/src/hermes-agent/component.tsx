@@ -9,6 +9,7 @@ import { NoIntegrationDataError } from "../errors/no-data-integration";
 import { HermesAgentInstanceCard } from "./instance-card";
 
 export default function HermesAgentWidget({
+  options,
   integrationIds,
   width,
   height,
@@ -18,17 +19,26 @@ export default function HermesAgentWidget({
     throw new NoIntegrationDataError();
   }
 
-  return <HermesAgentContent integrationIds={integrationIds} width={width} height={height} isEditMode={isEditMode} />;
+  return (
+    <HermesAgentContent
+      options={options}
+      integrationIds={integrationIds}
+      width={width}
+      height={height}
+      isEditMode={isEditMode}
+    />
+  );
 }
 
 interface HermesAgentContentProps {
+  options: WidgetComponentProps<"hermesAgent">["options"];
   integrationIds: string[];
   width: number;
   height: number;
   isEditMode: boolean;
 }
 
-function HermesAgentContent({ integrationIds, width, height, isEditMode }: HermesAgentContentProps) {
+function HermesAgentContent({ options, integrationIds, width, height, isEditMode }: HermesAgentContentProps) {
   const [instances] = clientApi.widget.hermesAgent.getOverviews.useSuspenseQuery(
     { integrationIds },
     { refetchInterval: isEditMode ? false : 30_000 },
@@ -50,6 +60,7 @@ function HermesAgentContent({ integrationIds, width, height, isEditMode }: Herme
             isNarrow={isNarrow}
             isShort={isShort}
             isTiny={isTiny}
+            options={options}
           />
         ))}
       </Stack>

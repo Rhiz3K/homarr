@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import type { HermesJob } from "@homarr/integrations/types";
 
 export const getStatusColor = (status: string | null | undefined) => {
@@ -8,16 +10,25 @@ export const getStatusColor = (status: string | null | undefined) => {
     case "ready":
       return "green";
     case "queued":
+    case "busy":
+    case "degraded":
+    case "draining":
     case "retrying":
     case "starting":
     case "stopping":
     case "waiting_for_approval":
       return "yellow";
     case "cancelled":
+    case "auth_error":
+    case "error":
+    case "unhealthy":
+    case "not_ready":
     case "disconnected":
     case "failed":
     case "fatal":
     case "paused":
+    case "startup_failed":
+    case "stopped":
       return "red";
     default:
       return "gray";
@@ -26,11 +37,18 @@ export const getStatusColor = (status: string | null | undefined) => {
 
 export const getJobKey = (job: HermesJob, index: number) => job.id ?? job.job_id ?? job.name ?? `job-${index}`;
 
+export const isJobPaused = (job: HermesJob) =>
+  job.paused === true || job.enabled === false || job.state?.toLowerCase() === "paused";
+
+export const isJobFailed = (job: HermesJob) =>
+  Boolean(job.last_error ?? job.last_delivery_error) ||
+  ["error", "failed"].includes(job.last_status?.toLowerCase() ?? "");
+
 export const getJobSummary = (jobs: HermesJob[]) => {
   return jobs.reduce(
     (summary, job) => {
-      const isPaused = job.paused === true || job.enabled === false || job.state === "paused";
-      const isFailed = Boolean(job.last_error ?? job.last_delivery_error) || job.last_status === "failed";
+      const isPaused = isJobPaused(job);
+      const isFailed = isJobFailed(job);
 
       return {
         total: summary.total + 1,
@@ -49,3 +67,5 @@ export const formatTokenCount = (value: number | null | undefined) => {
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
   return value.toString();
 };
+
+export const getHermesDate = (value: string | number) => (typeof value === "number" ? dayjs.unix(value) : dayjs(value));

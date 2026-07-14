@@ -36,11 +36,6 @@ const githubUpdateCache = new Map<
   }
 >();
 
-const createGithubHeaders = () => {
-  const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
-  return token ? { ...githubHeaders, Authorization: `Bearer ${token}` } : githubHeaders;
-};
-
 export class HermesAgentIntegration extends Integration {
   protected async testingAsync(input: IntegrationTestingInput): Promise<TestingResult> {
     const healthResponse = await input.fetchAsync(this.url("/health"), {
@@ -96,26 +91,30 @@ export class HermesAgentIntegration extends Integration {
       this.getModelsAsync(),
     ]);
 
-    const [sessions, jobs, toolsets, dashboardStatus, skills] = await Promise.all([
-      this.getOptionalAsync(() => this.getSessionsAsync(), []),
-      this.getOptionalAsync(() => this.getJobsAsync(), []),
-      this.getOptionalAsync(() => this.getToolsetsAsync(), []),
-      this.getOptionalAsync(() => this.getDashboardStatusAsync(), null),
-      this.getOptionalAsync(() => this.getDashboardSkillsAsync(), []),
+    const [sessions, jobs, toolsets, skills] = await Promise.all([
+      this.getOptionalDataAsync(() => this.getSessionsAsync(), []),
+      this.getOptionalDataAsync(() => this.getJobsAsync(), []),
+      this.getOptionalDataAsync(() => this.getToolsetsAsync(), []),
+      this.getOptionalDataAsync(() => this.getSkillsAsync(), []),
     ]);
-    const releaseDate = dashboardStatus?.release_date;
-    const update = releaseDate ? await this.getOptionalAsync(() => this.getUpdateStatusAsync(releaseDate), null) : null;
 
     return {
+      mode: "apiServer",
       health,
       capabilities,
       models,
-      sessions,
-      jobs,
-      toolsets,
-      dashboardStatus,
-      skills,
-      update,
+      sessions: sessions.data,
+      jobs: jobs.data,
+      toolsets: toolsets.data,
+      dashboardStatus: null,
+      skills: skills.data,
+      update: null,
+      dataAvailability: {
+        sessions: sessions.available,
+        jobs: jobs.available,
+        toolsets: toolsets.available,
+        skills: skills.available,
+      },
     };
   }
 
@@ -125,25 +124,32 @@ export class HermesAgentIntegration extends Integration {
     const releaseDate = dashboardStatus.release_date;
     const [skills, sessions, jobs, toolsets, update] = await Promise.all([
       dashboardHeaders
-        ? this.getOptionalAsync(
+        ? this.getOptionalDataAsync(
             () => this.getJsonAsync("/api/skills", hermesSkillsResponseSchema, undefined, false, dashboardHeaders),
             [],
           )
-        : [],
+        : this.getUnavailableData([]),
       dashboardHeaders
-        ? this.getOptionalAsync(
-            () => this.getJsonAsync("/api/sessions", hermesSessionsResponseSchema, undefined, false, dashboardHeaders),
+        ? this.getOptionalDataAsync(
+            () =>
+              this.getJsonAsync(
+                "/api/sessions",
+                hermesSessionsResponseSchema,
+                { limit: 10, order: "recent" },
+                false,
+                dashboardHeaders,
+              ),
             [],
           )
-        : [],
+        : this.getUnavailableData([]),
       dashboardHeaders
-        ? this.getOptionalAsync(
+        ? this.getOptionalDataAsync(
             () => this.getJsonAsync("/api/cron/jobs", hermesJobsResponseSchema, undefined, false, dashboardHeaders),
             [],
           )
-        : [],
+        : this.getUnavailableData([]),
       dashboardHeaders
-        ? this.getOptionalAsync(
+        ? this.getOptionalDataAsync(
             () =>
               this.getJsonAsync(
                 "/api/tools/toolsets",
@@ -154,17 +160,21 @@ export class HermesAgentIntegration extends Integration {
               ),
             [],
           )
-        : [],
+        : this.getUnavailableData([]),
       releaseDate ? this.getOptionalAsync(() => this.getUpdateStatusAsync(releaseDate), null) : null,
     ]);
 
     return {
+      mode: "dashboard",
       health: {
         status: dashboardStatus.gateway_running === false ? "error" : "ok",
         platform: "hermes-dashboard",
+        version: dashboardStatus.version,
         gateway_state: dashboardStatus.gateway_state,
         platforms: dashboardStatus.gateway_platforms,
-        active_agents: 0,
+        active_agents: dashboardStatus.active_agents ?? 0,
+        gateway_busy: dashboardStatus.gateway_busy,
+        gateway_drainable: dashboardStatus.gateway_drainable,
         exit_reason: dashboardStatus.gateway_exit_reason,
         updated_at: dashboardStatus.gateway_updated_at,
       },
@@ -172,14 +182,21 @@ export class HermesAgentIntegration extends Integration {
         platform: "hermes-dashboard",
         model: null,
         features: {},
+        endpoints: {},
       },
       models: [],
-      sessions,
-      jobs,
-      toolsets,
+      sessions: sessions.data,
+      jobs: jobs.data,
+      toolsets: toolsets.data,
       dashboardStatus,
-      skills,
+      skills: skills.data,
       update,
+      dataAvailability: {
+        sessions: sessions.available,
+        jobs: jobs.available,
+        toolsets: toolsets.available,
+        skills: skills.available,
+      },
     };
   }
 
@@ -210,6 +227,10 @@ export class HermesAgentIntegration extends Integration {
 
   public async getToolsetsAsync() {
     return await this.getJsonAsync("/v1/toolsets", hermesToolsetsResponseSchema);
+  }
+
+  public async getSkillsAsync() {
+    return await this.getJsonAsync("/v1/skills", hermesSkillsResponseSchema);
   }
 
   public async getDashboardStatusAsync() {
@@ -245,10 +266,9 @@ export class HermesAgentIntegration extends Integration {
 
   private async fetchUpdateStatusAsync(releaseDate: string): Promise<HermesUpdateStatus | null> {
     const currentReleaseTag = `v${releaseDate}`;
-    const headers = createGithubHeaders();
     const latestReleaseResponse = await fetchWithTrustedCertificatesAsync(
       new URL("https://api.github.com/repos/NousResearch/hermes-agent/releases/latest"),
-      { headers },
+      { headers: githubHeaders },
     );
 
     if (!latestReleaseResponse.ok) {
@@ -258,7 +278,7 @@ export class HermesAgentIntegration extends Integration {
     const latestRelease = hermesReleaseSchema.parse(await latestReleaseResponse.json());
     const compareResponse = await fetchWithTrustedCertificatesAsync(
       new URL(`https://api.github.com/repos/NousResearch/hermes-agent/compare/${currentReleaseTag}...main`),
-      { headers },
+      { headers: githubHeaders },
     );
     const compare = compareResponse.ok ? hermesCompareSchema.parse(await compareResponse.json()) : null;
 
@@ -309,6 +329,18 @@ export class HermesAgentIntegration extends Integration {
     } catch {
       return fallback;
     }
+  }
+
+  private async getOptionalDataAsync<T>(requestAsync: () => Promise<T>, fallback: T) {
+    try {
+      return { data: await requestAsync(), available: true };
+    } catch {
+      return this.getUnavailableData(fallback);
+    }
+  }
+
+  private getUnavailableData<T>(data: T) {
+    return { data, available: false };
   }
 
   private getAuthHeaders(): Record<string, string> {
