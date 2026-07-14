@@ -345,7 +345,7 @@ export class HermesAgentIntegration extends Integration {
 
   private getAuthHeaders(): Record<string, string> {
     return {
-      Authorization: `Bearer ${this.getSecretValue("apiKey")}`,
+      ...(this.hasSecretValue("apiKey") ? { Authorization: `Bearer ${this.getSecretValue("apiKey")}` } : {}),
       Accept: "application/json",
     };
   }

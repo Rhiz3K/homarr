@@ -107,6 +107,39 @@ describe("HermesAgentIntegration", () => {
     );
   });
 
+  test("testingAsync supports an API server without an API key", async () => {
+    const fetchAsync = vi.fn((url: Parameters<IntegrationTestingInput["fetchAsync"]>[0]) => {
+      const path = getPathname(url);
+      if (path === "/health") {
+        return Promise.resolve(createResponse({ status: "ok" }));
+      }
+      if (path === "/v1/capabilities") {
+        return Promise.resolve(
+          createResponse({
+            object: "hermes.api_server.capabilities",
+            platform: "hermes-agent",
+            model: "hermes-agent",
+            auth: { type: "none", required: false },
+            features: { run_status: true },
+          }),
+        );
+      }
+      return Promise.resolve(createResponse({ error: "Not Found" }, 404));
+    }) as IntegrationTestingInput["fetchAsync"];
+
+    const integration = createHermesAgentIntegration([]);
+    const result = await integration.callTestingAsync(fetchAsync);
+
+    expect(result.success).toBe(true);
+    expect(fetchAsync).toHaveBeenCalledTimes(2);
+    expect(fetchAsync).toHaveBeenLastCalledWith(
+      expect.any(URL),
+      expect.objectContaining({
+        headers: { Accept: "application/json" },
+      }),
+    );
+  });
+
   test("testingAsync accepts dashboard status endpoint", async () => {
     const fetchAsync = vi.fn((url: Parameters<IntegrationTestingInput["fetchAsync"]>[0]) => {
       const path = getPathname(url);
