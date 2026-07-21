@@ -331,7 +331,7 @@ describe("HermesAgentIntegration", () => {
             }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
           );
         }
-        if (path === "/repos/NousResearch/hermes-agent/compare/v2099.1.1...main") {
+        if (path === "/repos/NousResearch/hermes-agent/compare/v2099.1.1...v2099.1.1.2") {
           compareCalls += 1;
           return Promise.resolve(
             createResponse({ ahead_by: 2, total_commits: 2 }) as Awaited<
@@ -389,6 +389,8 @@ describe("HermesAgentIntegration", () => {
     const secondResult = await integration.getOverviewAsync();
 
     expect(firstResult.update?.commitsBehind).toBe(2);
+    expect(firstResult.update?.hasNewRelease).toBe(true);
+    expect(firstResult.update?.latestReleaseTag).toBe("v2099.1.1.2");
     expect(secondResult.update?.commitsBehind).toBe(2);
     expect(firstResult.mode).toBe("dashboard");
     expect(firstResult.dataAvailability).toEqual({ sessions: true, jobs: true, toolsets: true, skills: true });
@@ -399,6 +401,59 @@ describe("HermesAgentIntegration", () => {
       .find((url) => url.pathname === "/api/sessions");
     expect(dashboardSessionsUrl?.searchParams.get("limit")).toBe("10");
     expect(dashboardSessionsUrl?.searchParams.get("order")).toBe("recent");
+  });
+
+  test("getOverviewAsync reports an up-to-date release without comparing commits", async () => {
+    let compareCalls = 0;
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const parsedUrl = getRequestUrl(url);
+
+      if (parsedUrl.hostname === "api.github.com") {
+        if (parsedUrl.pathname === "/repos/NousResearch/hermes-agent/releases/latest") {
+          return Promise.resolve(
+            createResponse({
+              tag_name: "v2099.3.3",
+              html_url: "https://github.com/NousResearch/hermes-agent",
+            }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+          );
+        }
+
+        compareCalls += 1;
+        return Promise.resolve(
+          createResponse({ ahead_by: 0, total_commits: 0 }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+
+      if (parsedUrl.pathname === "/api/status") {
+        return Promise.resolve(
+          createResponse({
+            version: "0.15.1",
+            release_date: "2099.3.3",
+            gateway_running: true,
+            gateway_state: "running",
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    const integration = createHermesAgentIntegration();
+    const result = await integration.getOverviewAsync();
+
+    expect(result.mode).toBe("dashboard");
+    expect(result.update).toEqual({
+      currentReleaseTag: "v2099.3.3",
+      latestReleaseTag: "v2099.3.3",
+      hasNewRelease: false,
+      commitsBehind: 0,
+      releaseUrl: "https://github.com/NousResearch/hermes-agent",
+    });
+    expect(compareCalls).toBe(0);
   });
 
   test("getOverviewAsync keeps optional collections empty when optional endpoints are unavailable", async () => {

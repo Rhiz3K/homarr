@@ -276,17 +276,22 @@ export class HermesAgentIntegration extends Integration {
     }
 
     const latestRelease = hermesReleaseSchema.parse(await latestReleaseResponse.json());
-    const compareResponse = await fetchWithTrustedCertificatesAsync(
-      new URL(`https://api.github.com/repos/NousResearch/hermes-agent/compare/${currentReleaseTag}...main`),
-      { headers: githubHeaders },
-    );
-    const compare = compareResponse.ok ? hermesCompareSchema.parse(await compareResponse.json()) : null;
+    const hasNewRelease = latestRelease.tag_name !== currentReleaseTag;
+    const compareResponse = hasNewRelease
+      ? await fetchWithTrustedCertificatesAsync(
+          new URL(
+            `https://api.github.com/repos/NousResearch/hermes-agent/compare/${currentReleaseTag}...${latestRelease.tag_name}`,
+          ),
+          { headers: githubHeaders },
+        )
+      : null;
+    const compare = compareResponse?.ok ? hermesCompareSchema.parse(await compareResponse.json()) : null;
 
     return {
       currentReleaseTag,
       latestReleaseTag: latestRelease.tag_name,
-      hasNewRelease: latestRelease.tag_name !== currentReleaseTag,
-      commitsBehind: compare?.ahead_by ?? compare?.total_commits ?? null,
+      hasNewRelease,
+      commitsBehind: hasNewRelease ? (compare?.ahead_by ?? compare?.total_commits ?? null) : 0,
       releaseUrl: latestRelease.html_url ?? null,
     };
   }
