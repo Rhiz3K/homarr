@@ -16,7 +16,7 @@ import type { HermesJob, HermesSession, HermesToolset, HermesPlatformStatus } fr
 import { useScopedI18n } from "@homarr/translation/client";
 
 import { getHermesPlatformChannels, getJobKey, getStatusColor, isJobFailed, isJobPaused } from "./utils";
-import { HERMES_CHROME_TEXT_STYLE, HERMES_TECHNICAL_TEXT_STYLE, HERMES_THEME } from "./theme";
+import { HERMES_CHROME_TEXT_STYLE, HERMES_TECHNICAL_TEXT_STYLE, useHermesTheme } from "./theme";
 
 interface PlatformsListProps {
   platforms: Record<string, HermesPlatformStatus>;
@@ -25,6 +25,7 @@ interface PlatformsListProps {
 
 export function PlatformsList({ platforms, sessions }: PlatformsListProps) {
   const t = useScopedI18n("widget.hermesAgent");
+  const theme = useHermesTheme();
   const entries = Object.entries(platforms).toSorted(([nameA], [nameB]) => nameA.localeCompare(nameB));
   const channels = getHermesPlatformChannels(sessions);
 
@@ -52,14 +53,14 @@ export function PlatformsList({ platforms, sessions }: PlatformsListProps) {
                 >
                   <VisuallyHidden>{platform.state ?? t("unknown")}</VisuallyHidden>
                 </Box>
-                <Text size="xs" fw={600} c={HERMES_THEME.textPrimary} lh={1.25}>
+                <Text size="xs" fw={600} c={theme.textPrimary} lh={1.25}>
                   {name}
                 </Text>
                 {platformChannels.length > 0 && (
                   <Text
                     size="xs"
                     fw={700}
-                    c={HERMES_THEME.success}
+                    c={theme.success}
                     title={t("platforms.channelCount", { count: platformChannels.length })}
                     style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap" }}
                   >
@@ -68,7 +69,7 @@ export function PlatformsList({ platforms, sessions }: PlatformsListProps) {
                 )}
               </Group>
               {platform.updated_at && (
-                <Text size="xs" c={HERMES_THEME.textTertiary} ta="right" lh={1.25} style={{ whiteSpace: "nowrap" }}>
+                <Text size="xs" c={theme.textTertiary} ta="right" lh={1.25} style={{ whiteSpace: "nowrap" }}>
                   {dayjs(platform.updated_at).fromNow()}
                 </Text>
               )}
@@ -83,14 +84,14 @@ export function PlatformsList({ platforms, sessions }: PlatformsListProps) {
                   return (
                     <Group key={channel.id} justify="space-between" wrap="nowrap" gap={5} mih={20}>
                       <Group gap={4} wrap="nowrap" miw={0}>
-                        <Text size="xs" c={HERMES_THEME.textSecondary} lh={1.25} lineClamp={1} title={channelName}>
+                        <Text size="xs" c={theme.textSecondary} lh={1.25} lineClamp={1} title={channelName}>
                           {channelName}
                         </Text>
                         {channelKind && (
                           <Text
                             size="xs"
                             fw={600}
-                            c={HERMES_THEME.textTertiary}
+                            c={theme.textTertiary}
                             title={
                               channel.threadId
                                 ? t("platforms.topic", { id: channel.threadId })
@@ -104,7 +105,7 @@ export function PlatformsList({ platforms, sessions }: PlatformsListProps) {
                       </Group>
                       <Text
                         size="xs"
-                        c={HERMES_THEME.textTertiary}
+                        c={theme.textTertiary}
                         title={t("platforms.sessionCount", { count: channel.sessionCount })}
                         style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap", flexShrink: 0 }}
                       >
@@ -133,6 +134,7 @@ interface SessionsListProps {
 
 export function SessionsList({ sessions }: SessionsListProps) {
   const t = useScopedI18n("widget.hermesAgent");
+  const theme = useHermesTheme();
   const visibleSessions = sessions.slice(0, 15);
 
   if (visibleSessions.length === 0) return <EmptyText text={t("empty.sessions")} />;
@@ -144,15 +146,7 @@ export function SessionsList({ sessions }: SessionsListProps) {
 
         return (
           <Group key={session.id} gap={5} wrap="nowrap" mih={20}>
-            <Text
-              size="xs"
-              fw={500}
-              c={HERMES_THEME.textPrimary}
-              lh={1.3}
-              lineClamp={1}
-              title={title}
-              style={{ flex: 1 }}
-            >
+            <Text size="xs" fw={500} c={theme.textPrimary} lh={1.3} lineClamp={1} title={title} style={{ flex: 1 }}>
               {title}
             </Text>
             {session.source && <SessionSourceIcon source={session.source} />}
@@ -169,6 +163,7 @@ interface JobsListProps {
 
 export function JobsList({ jobs }: JobsListProps) {
   const t = useScopedI18n("widget.hermesAgent");
+  const theme = useHermesTheme();
   const visibleJobs = jobs.slice(0, 6);
 
   if (visibleJobs.length === 0) return <EmptyText text={t("empty.jobs")} />;
@@ -189,7 +184,7 @@ export function JobsList({ jobs }: JobsListProps) {
             <Text
               size="xs"
               fw={500}
-              c={HERMES_THEME.textPrimary}
+              c={theme.textPrimary}
               lh={1.3}
               lineClamp={1}
               title={`${name} · ${schedule}`}
@@ -200,7 +195,7 @@ export function JobsList({ jobs }: JobsListProps) {
             <Text
               size="xs"
               fw={700}
-              c={isFailed ? HERMES_THEME.error : isPaused ? HERMES_THEME.warning : HERMES_THEME.success}
+              c={isFailed ? theme.error : isPaused ? theme.warning : theme.success}
               lh={1.25}
               title={schedule}
               style={{ ...HERMES_CHROME_TEXT_STYLE, whiteSpace: "nowrap" }}
@@ -215,6 +210,7 @@ export function JobsList({ jobs }: JobsListProps) {
 }
 
 function SessionSourceIcon({ source }: { source: string }) {
+  const theme = useHermesTheme();
   const normalizedSource = source.toLowerCase();
   const iconProps = { size: 14, stroke: 1.8, "aria-hidden": true } as const;
   const sourceIcon = normalizedSource.includes("telegram") ? (
@@ -226,15 +222,15 @@ function SessionSourceIcon({ source }: { source: string }) {
   ) : normalizedSource.includes("whatsapp") ? (
     <IconBrandWhatsapp {...iconProps} color="#25d366" />
   ) : normalizedSource.includes("cron") ? (
-    <IconClock {...iconProps} color={HERMES_THEME.warning} />
+    <IconClock {...iconProps} color={theme.warning} />
   ) : normalizedSource.includes("api") ? (
-    <IconApi {...iconProps} color={HERMES_THEME.success} />
+    <IconApi {...iconProps} color={theme.success} />
   ) : normalizedSource.includes("web") ? (
-    <IconWorld {...iconProps} color={HERMES_THEME.success} />
+    <IconWorld {...iconProps} color={theme.success} />
   ) : normalizedSource.includes("cli") || normalizedSource.includes("terminal") ? (
-    <IconTerminal2 {...iconProps} color={HERMES_THEME.textSecondary} />
+    <IconTerminal2 {...iconProps} color={theme.textSecondary} />
   ) : (
-    <IconMessageCircle {...iconProps} color={HERMES_THEME.textSecondary} />
+    <IconMessageCircle {...iconProps} color={theme.textSecondary} />
   );
 
   return (
@@ -253,6 +249,7 @@ interface ToolsetsListProps {
 
 export function ToolsetsList({ toolsets }: ToolsetsListProps) {
   const t = useScopedI18n("widget.hermesAgent");
+  const theme = useHermesTheme();
   const enabledToolsets = toolsets.filter((toolset) => toolset.enabled === true);
 
   if (toolsets.length === 0) return <EmptyText text={t("empty.toolsets")} />;
@@ -261,20 +258,13 @@ export function ToolsetsList({ toolsets }: ToolsetsListProps) {
     <Stack gap={3}>
       {enabledToolsets.slice(0, 10).map((toolset) => (
         <Group key={toolset.name} justify="space-between" align="flex-start" wrap="nowrap" gap={5} mih={20}>
-          <Text
-            size="xs"
-            fw={500}
-            c={HERMES_THEME.textPrimary}
-            lh={1.3}
-            lineClamp={2}
-            title={toolset.label ?? toolset.name}
-          >
+          <Text size="xs" fw={500} c={theme.textPrimary} lh={1.3} lineClamp={2} title={toolset.label ?? toolset.name}>
             {toolset.label ?? toolset.name}
           </Text>
           <Text
             size="xs"
             fw={700}
-            c={toolset.configured === false ? HERMES_THEME.warning : HERMES_THEME.success}
+            c={toolset.configured === false ? theme.warning : theme.success}
             title={t("toolsets.tools", { count: toolset.tools.length })}
             style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap", flexShrink: 0 }}
           >
@@ -288,8 +278,9 @@ export function ToolsetsList({ toolsets }: ToolsetsListProps) {
 }
 
 function EmptyText({ text }: { text: string }) {
+  const theme = useHermesTheme();
   return (
-    <Text size="xs" c={HERMES_THEME.textTertiary} ta="center" py={4}>
+    <Text size="xs" c={theme.textTertiary} ta="center" py={4}>
       {text}
     </Text>
   );

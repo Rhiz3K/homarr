@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Anchor, Group, Stack, Text } from "@mantine/core";
 
 import type { LayoutMode } from "./layout";
-import { HERMES_CHROME_TEXT_STYLE, HERMES_TECHNICAL_TEXT_STYLE, HERMES_THEME } from "./theme";
+import { HERMES_CHROME_TEXT_STYLE, HERMES_TECHNICAL_TEXT_STYLE, useHermesTheme } from "./theme";
 
 export interface MetricDefinition {
   id: string;
@@ -28,6 +28,7 @@ interface MetricTileProps {
 }
 
 export function MetricTile({ icon, label, value, title, detail, color, href, mode, hideDetail }: MetricTileProps) {
+  const theme = useHermesTheme();
   const valueTitle = `${label}: ${title ?? value}${detail && !hideDetail ? ` ${detail}` : ""}`;
   const isChip = mode === "micro" || mode === "strip" || mode === "tall" || (mode === "standard" && hideDetail);
   const isDense = mode !== "showcase";
@@ -40,13 +41,13 @@ export function MetricTile({ icon, label, value, title, detail, color, href, mod
         p={1}
         miw={0}
         style={{
-          background: HERMES_THEME.surface,
-          border: `1px solid ${HERMES_THEME.border}`,
+          background: theme.surface,
+          border: `1px solid ${theme.border}`,
           borderRadius: 8,
           overflow: "hidden",
         }}
       >
-        <Text c={HERMES_THEME.textTertiary} lh={1} style={{ display: "flex", flexShrink: 0 }}>
+        <Text c={theme.textTertiary} lh={1} style={{ display: "flex", flexShrink: 0 }}>
           {icon}
         </Text>
         <MetricValue href={href} value={value} title={valueTitle} color={color} fontSize="xs" />
@@ -59,19 +60,19 @@ export function MetricTile({ icon, label, value, title, detail, color, href, mod
       gap={0}
       p={isDense ? 3 : 5}
       style={{
-        border: `1px solid ${HERMES_THEME.border}`,
-        background: HERMES_THEME.surface,
+        border: `1px solid ${theme.border}`,
+        background: theme.surface,
         borderRadius: 8,
         overflow: "hidden",
       }}
     >
       <Group gap={isDense ? 2 : 4} wrap="nowrap" miw={0}>
-        <Text c={HERMES_THEME.textTertiary} lh={1} style={{ display: "flex", flexShrink: 0 }}>
+        <Text c={theme.textTertiary} lh={1} style={{ display: "flex", flexShrink: 0 }}>
           {icon}
         </Text>
         <Text
           size="xs"
-          c={HERMES_THEME.textPrimary}
+          c={theme.textPrimary}
           lineClamp={1}
           style={{ ...HERMES_CHROME_TEXT_STYLE, letterSpacing: "0.04em", minWidth: 0 }}
         >
@@ -81,7 +82,7 @@ export function MetricTile({ icon, label, value, title, detail, color, href, mod
       <Group gap={isDense ? 2 : 4} wrap="nowrap" miw={0}>
         <MetricValue href={href} value={value} title={valueTitle} color={color} fontSize={isDense ? "xs" : "sm"} />
         {detail && !hideDetail && (
-          <Text size="xs" c={HERMES_THEME.textTertiary} lineClamp={1}>
+          <Text size="xs" c={theme.textTertiary} lineClamp={1}>
             {detail}
           </Text>
         )}

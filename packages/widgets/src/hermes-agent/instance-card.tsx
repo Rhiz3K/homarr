@@ -30,7 +30,8 @@ import {
 } from "./layout";
 import type { MetricDefinition } from "./metric-tile";
 import { MetricTile } from "./metric-tile";
-import { HERMES_CHROME_TEXT_STYLE, HERMES_THEME } from "./theme";
+import type { HermesTheme } from "./theme";
+import { HERMES_BRAND_THEME, HERMES_CHROME_TEXT_STYLE, HERMES_NEUTRAL_THEME, HermesThemeContext } from "./theme";
 import type { HermesAgentInstance } from "./types";
 import { getCompactStatusKey, getHermesGatewayState, getJobSummary, getStatusColor } from "./utils";
 
@@ -54,6 +55,7 @@ export function HermesAgentInstanceCard({
   options,
 }: HermesAgentInstanceCardProps) {
   const t = useScopedI18n("widget.hermesAgent");
+  const theme = options.brandTheme ? HERMES_BRAND_THEME : HERMES_NEUTRAL_THEME;
   const { overview } = instance;
   const dashboardUrl = instance.integrationUrl.replace(/\/+$/, "");
   const dashboardRoutes = {
@@ -86,25 +88,20 @@ export function HermesAgentInstanceCard({
     layoutMode === "micro" ? 7 : isMicroMetricMode ? 8 : dense ? 11 : layoutMode === "showcase" ? 15 : 13;
   const versionValue = getCompactVersionValue(version, dense || compactVersion, compactVersion);
   const updateColor = !overview.update
-    ? HERMES_THEME.textTertiary
+    ? theme.textTertiary
     : overview.update.hasNewRelease
-      ? HERMES_THEME.warning
-      : HERMES_THEME.success;
-  const jobsColor =
-    jobSummary.total === 0
-      ? HERMES_THEME.textTertiary
-      : jobSummary.failed > 0
-        ? HERMES_THEME.error
-        : HERMES_THEME.success;
+      ? theme.warning
+      : theme.success;
+  const jobsColor = jobSummary.total === 0 ? theme.textTertiary : jobSummary.failed > 0 ? theme.error : theme.success;
   const skillsColor = overview.dataAvailability.skills
-    ? getRatioColor(enabledSkills, overview.skills.length)
-    : HERMES_THEME.textTertiary;
-  const platformsColor = getRatioColor(connectedPlatforms, platformEntries.length);
+    ? getRatioColor(theme, enabledSkills, overview.skills.length)
+    : theme.textTertiary;
+  const platformsColor = getRatioColor(theme, connectedPlatforms, platformEntries.length);
   const toolsetsColor = overview.dataAvailability.toolsets
-    ? getRatioColor(enabledToolsets, overview.toolsets.length)
-    : HERMES_THEME.textTertiary;
-  const activeAgentsColor = getNeutralCountColor(overview.health.active_agents);
-  const activeSessionsColor = getNeutralCountColor(activeSessions);
+    ? getRatioColor(theme, enabledToolsets, overview.toolsets.length)
+    : theme.textTertiary;
+  const activeAgentsColor = getNeutralCountColor(theme, overview.health.active_agents);
+  const activeSessionsColor = getNeutralCountColor(theme, activeSessions);
   const skillsValue = !overview.dataAvailability.skills
     ? t("unknownShort")
     : overview.skills.length > 0
@@ -143,7 +140,7 @@ export function HermesAgentInstanceCard({
       label: t("summary.version"),
       value: versionValue,
       title: release ? `${version} (${release})` : version,
-      color: HERMES_THEME.textPrimary,
+      color: theme.textPrimary,
       href: getModeRoute("config"),
     },
     {
@@ -215,7 +212,7 @@ export function HermesAgentInstanceCard({
     <Stack
       gap={getContentGap(layoutMode)}
       justify={layoutMode === "showcase" ? "center" : undefined}
-      style={getContentStyle(layoutMode)}
+      style={getContentStyle(layoutMode, theme)}
     >
       <Group justify="space-between" wrap="nowrap" gap={dense ? 4 : "xs"}>
         <Group gap={isMicroMetricMode ? 4 : "xs"} wrap="nowrap" miw={0}>
@@ -224,7 +221,7 @@ export function HermesAgentInstanceCard({
             alt="Hermes Agent"
             size={getLogoSize(layoutMode)}
             radius="sm"
-            styles={{ root: { border: `1px solid ${HERMES_THEME.borderStrong}`, background: HERMES_THEME.surface } }}
+            styles={{ root: { border: `1px solid ${theme.borderStrong}`, background: theme.surface } }}
           />
           <Stack gap={0} miw={0}>
             {overview.mode === "dashboard" ? (
@@ -234,11 +231,11 @@ export function HermesAgentInstanceCard({
                 rel="noopener noreferrer"
                 fz={getTitleSize(layoutMode)}
                 fw={700}
-                c={HERMES_THEME.textPrimary}
+                c={theme.textPrimary}
                 underline="never"
                 lineClamp={1}
                 title={`${instance.integrationName} ${t("meta.version", { version })}`}
-                style={{ fontFamily: HERMES_THEME.fontSans, textWrap: "balance" }}
+                style={{ fontFamily: theme.fontSans, textWrap: "balance" }}
               >
                 {titleLabel}
               </Anchor>
@@ -246,16 +243,16 @@ export function HermesAgentInstanceCard({
               <Text
                 fz={getTitleSize(layoutMode)}
                 fw={700}
-                c={HERMES_THEME.textPrimary}
+                c={theme.textPrimary}
                 lineClamp={1}
                 title={`${instance.integrationName} ${t("meta.version", { version })}`}
-                style={{ fontFamily: HERMES_THEME.fontSans, textWrap: "balance" }}
+                style={{ fontFamily: theme.fontSans, textWrap: "balance" }}
               >
                 {titleLabel}
               </Text>
             )}
             {showVersion && (
-              <Text size="xs" c={HERMES_THEME.textSecondary} lineClamp={1}>
+              <Text size="xs" c={theme.textSecondary} lineClamp={1}>
                 {t("meta.versionAndMode", { version, mode: t(`mode.${overview.mode}`) })}
               </Text>
             )}
@@ -268,10 +265,10 @@ export function HermesAgentInstanceCard({
           maw={isNarrow ? 44 : 110}
           styles={{
             root: {
-              background: HERMES_THEME.surfaceRaised,
-              border: `1px solid ${HERMES_THEME.border}`,
+              background: theme.surfaceRaised,
+              border: `1px solid ${theme.border}`,
             },
-            label: { color: HERMES_THEME.textPrimary, ...HERMES_CHROME_TEXT_STYLE },
+            label: { color: theme.textPrimary, ...HERMES_CHROME_TEXT_STYLE },
           }}
         >
           {statusLabel}
@@ -315,7 +312,7 @@ export function HermesAgentInstanceCard({
             size="xs"
             variant="outline"
             styles={{
-              root: { color: HERMES_THEME.textSecondary, borderColor: HERMES_THEME.border },
+              root: { color: theme.textSecondary, borderColor: theme.border },
               label: HERMES_CHROME_TEXT_STYLE,
             }}
           >
@@ -323,7 +320,7 @@ export function HermesAgentInstanceCard({
           </Badge>
           <Text
             size="xs"
-            c={HERMES_THEME.textTertiary}
+            c={theme.textTertiary}
             lineClamp={1}
             title={dayjs(instance.updatedAt).format("YYYY-MM-DD HH:mm:ss")}
           >
@@ -334,12 +331,14 @@ export function HermesAgentInstanceCard({
     </Stack>
   );
 
-  if (!showCardShell) return content;
+  if (!showCardShell) return <HermesThemeContext.Provider value={theme}>{content}</HermesThemeContext.Provider>;
 
   return (
-    <Card withBorder radius="md" p="xs" style={getCardStyle()}>
-      {content}
-    </Card>
+    <HermesThemeContext.Provider value={theme}>
+      <Card withBorder radius="md" p="xs" style={getCardStyle(theme, options.brandTheme)}>
+        {content}
+      </Card>
+    </HermesThemeContext.Provider>
   );
 }
 
@@ -347,15 +346,15 @@ function getDashboardUrl(dashboardUrl: string, path: string) {
   return `${dashboardUrl}${path}`;
 }
 
-function getRatioColor(active: number, total: number) {
-  if (total === 0) return HERMES_THEME.textTertiary;
-  if (active === total) return HERMES_THEME.success;
-  if (active > 0) return HERMES_THEME.warning;
-  return HERMES_THEME.error;
+function getRatioColor(theme: HermesTheme, active: number, total: number) {
+  if (total === 0) return theme.textTertiary;
+  if (active === total) return theme.success;
+  if (active > 0) return theme.warning;
+  return theme.error;
 }
 
-function getNeutralCountColor(value: number | null) {
-  return value !== null && value > 0 ? HERMES_THEME.textPrimary : HERMES_THEME.textTertiary;
+function getNeutralCountColor(theme: HermesTheme, value: number | null) {
+  return value !== null && value > 0 ? theme.textPrimary : theme.textTertiary;
 }
 
 function abbreviateStatus(status: string) {

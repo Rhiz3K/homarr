@@ -6,7 +6,7 @@ import { useScopedI18n } from "@homarr/translation/client";
 
 import type { WidgetComponentProps } from "../definition";
 import { JobsList, PlatformsList, SessionsList, ToolsetsList } from "./lists";
-import { HERMES_CHROME_TEXT_STYLE, HERMES_THEME } from "./theme";
+import { HERMES_CHROME_TEXT_STYLE, useHermesTheme } from "./theme";
 import type { HermesAgentInstance } from "./types";
 
 export type HermesDashboardRoutes = Record<"config" | "cron" | "profiles" | "sessions" | "skills", string>;
@@ -21,6 +21,7 @@ interface DetailsGridProps {
 
 export function DetailsGrid({ instance, options, routes, linkToDashboard, columns }: DetailsGridProps) {
   const t = useScopedI18n("widget.hermesAgent");
+  const theme = useHermesTheme();
   const [blurredSections, setBlurredSections] = useState<Set<string>>(() => new Set());
   const { overview } = instance;
   const platforms = overview.dashboardStatus?.gateway_platforms ?? overview.health.platforms;
@@ -84,10 +85,10 @@ export function DetailsGrid({ instance, options, routes, linkToDashboard, column
             radius="sm"
             p={8}
             miw={0}
-            style={{ background: HERMES_THEME.surface, borderColor: HERMES_THEME.border }}
+            style={{ background: theme.surface, borderColor: theme.border }}
           >
             <Group justify="space-between" gap={4} wrap="nowrap">
-              <Text size="xs" fw={700} c={HERMES_THEME.textPrimary} lineClamp={1} style={HERMES_CHROME_TEXT_STYLE}>
+              <Text size="xs" fw={700} c={theme.textPrimary} lineClamp={1} style={HERMES_CHROME_TEXT_STYLE}>
                 {section.label}
               </Text>
               <Group gap={2} wrap="nowrap">
@@ -98,7 +99,7 @@ export function DetailsGrid({ instance, options, routes, linkToDashboard, column
                     size="xs"
                     aria-label={privacyLabel}
                     aria-pressed={isBlurred}
-                    style={{ color: HERMES_THEME.textSecondary }}
+                    style={{ color: theme.textSecondary }}
                     onClick={() => {
                       setBlurredSections((current) => {
                         const next = new Set(current);
@@ -116,7 +117,7 @@ export function DetailsGrid({ instance, options, routes, linkToDashboard, column
                     href={section.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    c={HERMES_THEME.textSecondary}
+                    c={theme.textSecondary}
                     lh={1}
                     aria-label={t("action.openSection", { section: section.label })}
                   >
@@ -125,7 +126,7 @@ export function DetailsGrid({ instance, options, routes, linkToDashboard, column
                 )}
               </Group>
             </Group>
-            <Divider my={4} color={HERMES_THEME.border} />
+            <Divider my={4} color={theme.border} />
             <Box
               aria-hidden={isBlurred}
               style={{
@@ -146,8 +147,9 @@ export function DetailsGrid({ instance, options, routes, linkToDashboard, column
 
 function UnavailableText() {
   const t = useScopedI18n("widget.hermesAgent");
+  const theme = useHermesTheme();
   return (
-    <Text size="xs" c={HERMES_THEME.textTertiary} ta="center" py={4}>
+    <Text size="xs" c={theme.textTertiary} ta="center" py={4}>
       {t("empty.unavailable")}
     </Text>
   );

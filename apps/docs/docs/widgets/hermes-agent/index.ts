@@ -9,6 +9,12 @@ export const hermesAgentWidget: WidgetDefinition = {
   configuration: {
     items: [
       {
+        name: "Hermes brand theme",
+        description: "Use the Hermes teal appearance instead of following the board theme.",
+        values: { type: "boolean" },
+        defaultValue: "yes",
+      },
+      {
         name: "Show platforms",
         description: "Show connected messaging platforms in large widget layouts.",
         values: { type: "boolean" },

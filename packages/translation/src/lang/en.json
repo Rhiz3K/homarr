@@ -2489,6 +2489,10 @@
       "unknown": "Unknown",
       "unknownShort": "n/a",
       "option": {
+        "brandTheme": {
+          "label": "Hermes brand theme",
+          "description": "Use the Hermes teal appearance instead of following the board theme"
+        },
         "showPlatforms": {
           "label": "Show platforms",
           "description": "Show connected messaging platforms in large widget layouts"

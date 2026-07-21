@@ -1,4 +1,4 @@
-import { HERMES_THEME } from "./theme";
+import type { HermesTheme } from "./theme";
 
 export type LayoutMode = "micro" | "strip" | "tall" | "standard" | "showcase";
 
@@ -97,27 +97,31 @@ export function getCompactVersionValue(version: string, isDense: boolean, isMicr
   return version;
 }
 
-export function getCardStyle() {
+export function getCardStyle(theme: HermesTheme, brandTheme: boolean) {
+  if (!brandTheme) {
+    return { overflow: "hidden" };
+  }
+
   return {
-    background: `radial-gradient(circle at top right, ${HERMES_THEME.glow}, transparent 42%), ${HERMES_THEME.background}`,
-    border: `1px solid ${HERMES_THEME.borderStrong}`,
-    boxShadow: `inset 0 1px 0 ${HERMES_THEME.border}, 0 0 20px rgba(4, 28, 28, 0.2)`,
-    color: HERMES_THEME.textPrimary,
-    fontFamily: HERMES_THEME.fontSans,
+    background: `radial-gradient(circle at top right, ${theme.glow}, transparent 42%), ${theme.background}`,
+    border: `1px solid ${theme.borderStrong}`,
+    boxShadow: `inset 0 1px 0 ${theme.border}, 0 0 20px rgba(4, 28, 28, 0.2)`,
+    color: theme.textPrimary,
+    fontFamily: theme.fontSans,
     overflow: "hidden",
   };
 }
 
-export function getContentStyle(mode: LayoutMode) {
+export function getContentStyle(mode: LayoutMode, theme: HermesTheme) {
   if (mode === "standard" || mode === "showcase") {
     return { overflow: "hidden" };
   }
 
   return {
-    background: HERMES_THEME.surface,
-    borderLeft: `2px solid ${HERMES_THEME.borderStrong}`,
+    background: theme.surface,
+    borderLeft: `2px solid ${theme.borderStrong}`,
     borderRadius: 8,
-    boxShadow: `inset 0 0 0 1px ${HERMES_THEME.border}`,
+    boxShadow: `inset 0 0 0 1px ${theme.border}`,
     overflow: "hidden",
     paddingLeft: 3,
   };

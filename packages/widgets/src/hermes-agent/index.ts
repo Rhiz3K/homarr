@@ -7,6 +7,7 @@ export const { definition, componentLoader } = createWidgetDefinition("hermesAge
   icon: IconRobot,
   createOptions() {
     return optionsBuilder.from((factory) => ({
+      brandTheme: factory.switch({ defaultValue: true, withDescription: true }),
       showPlatforms: factory.switch({ defaultValue: true, withDescription: true }),
       showSessions: factory.switch({ defaultValue: true, withDescription: true }),
       showJobs: factory.switch({ defaultValue: true, withDescription: true }),
