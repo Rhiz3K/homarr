@@ -2,7 +2,23 @@ import { describe, expect, test } from "vitest";
 
 import type { HermesJob, HermesSession } from "@homarr/integrations/types";
 
-import { getHermesPlatformChannels, getJobSummary, getStatusColor, isJobFailed, isJobPaused } from "./utils";
+import {
+  getHermesGatewayState,
+  getHermesPlatformChannels,
+  getJobSummary,
+  getStatusColor,
+  isJobFailed,
+  isJobPaused,
+} from "./utils";
+
+const baseHealth = { status: "ok", platforms: {}, active_agents: 0 };
+const baseDashboardStatus = {
+  version: "1.0.0",
+  gateway_running: true,
+  gateway_platforms: {},
+  profiles: [],
+  auth_providers: [],
+};
 
 describe("Hermes Agent widget utilities", () => {
   test("maps current gateway and readiness states to semantic colors", () => {
@@ -23,6 +39,44 @@ describe("Hermes Agent widget utilities", () => {
     expect(isJobFailed(failedJob)).toBe(true);
     expect(isJobPaused(pausedJob)).toBe(true);
     expect(getJobSummary(jobs)).toEqual({ total: 3, active: 2, failed: 1, paused: 1 });
+  });
+
+  test("derives the gateway state with auth, readiness, and busy precedence", () => {
+    expect(
+      getHermesGatewayState({
+        mode: "dashboard",
+        health: baseHealth,
+        dashboardStatus: { ...baseDashboardStatus, nous_session_valid: "terminal", gateway_state: "running" },
+      }),
+    ).toBe("auth_error");
+    expect(
+      getHermesGatewayState({
+        mode: "apiServer",
+        health: { ...baseHealth, readiness: { status: "not_ready" }, gateway_busy: true },
+        dashboardStatus: null,
+      }),
+    ).toBe("not_ready");
+    expect(
+      getHermesGatewayState({
+        mode: "apiServer",
+        health: { ...baseHealth, readiness: { status: "ready" }, gateway_busy: true },
+        dashboardStatus: null,
+      }),
+    ).toBe("busy");
+    expect(
+      getHermesGatewayState({
+        mode: "apiServer",
+        health: { ...baseHealth, readiness: { status: "ready" } },
+        dashboardStatus: null,
+      }),
+    ).toBe("ready");
+    expect(
+      getHermesGatewayState({
+        mode: "dashboard",
+        health: baseHealth,
+        dashboardStatus: { ...baseDashboardStatus, gateway_state: "starting" },
+      }),
+    ).toBe("starting");
   });
 
   test("groups messaging sessions into distinct chats and topics", () => {

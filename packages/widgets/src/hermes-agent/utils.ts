@@ -1,4 +1,4 @@
-import type { HermesJob, HermesSession } from "@homarr/integrations/types";
+import type { HermesAgentOverview, HermesJob, HermesSession } from "@homarr/integrations/types";
 
 export interface HermesPlatformChannel {
   id: string;
@@ -41,6 +41,21 @@ export const getStatusColor = (status: string | null | undefined) => {
     default:
       return "gray";
   }
+};
+
+const isHealthyStatus = (status: string) => ["connected", "ok", "ready", "running"].includes(status.toLowerCase());
+
+export const getHermesGatewayState = (overview: Pick<HermesAgentOverview, "mode" | "health" | "dashboardStatus">) => {
+  const status = overview.dashboardStatus;
+  if (status?.nous_session_valid === "terminal") return "auth_error";
+
+  const apiReadinessState =
+    overview.mode === "apiServer" ? (overview.health.readiness?.status ?? overview.health.status) : null;
+  if (apiReadinessState && !isHealthyStatus(apiReadinessState)) return apiReadinessState;
+  if (overview.health.gateway_busy) return "busy";
+  if (overview.mode === "apiServer") return apiReadinessState ?? overview.health.gateway_state ?? null;
+
+  return status?.gateway_state ?? overview.health.gateway_state ?? overview.health.status;
 };
 
 export const getJobKey = (job: HermesJob, index: number) => job.id ?? job.job_id ?? job.name ?? `job-${index}`;
