@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 
-import type { HermesJob } from "@homarr/integrations/types";
+import type { HermesJob, HermesSession } from "@homarr/integrations/types";
 
-import { formatTokenCount, getHermesDate, getJobSummary, getStatusColor, isJobFailed, isJobPaused } from "./utils";
+import { getHermesPlatformChannels, getJobSummary, getStatusColor, isJobFailed, isJobPaused } from "./utils";
 
 describe("Hermes Agent widget utilities", () => {
   test("maps current gateway and readiness states to semantic colors", () => {
@@ -25,9 +25,54 @@ describe("Hermes Agent widget utilities", () => {
     expect(getJobSummary(jobs)).toEqual({ total: 3, active: 2, failed: 1, paused: 1 });
   });
 
-  test("formats Unix-second session timestamps and token counts", () => {
-    expect(getHermesDate(1_767_225_600).toISOString()).toBe("2026-01-01T00:00:00.000Z");
-    expect(formatTokenCount(1_250)).toBe("1.3K");
-    expect(formatTokenCount(1_250_000)).toBe("1.3M");
+  test("groups messaging sessions into distinct chats and topics", () => {
+    const sessions = [
+      {
+        id: "session-1",
+        source: "telegram",
+        chat_id: "1234",
+        chat_type: "group",
+        display_name: "Operations",
+        thread_id: "42",
+      },
+      {
+        id: "session-2",
+        source: "telegram",
+        chat_id: "1234",
+        chat_type: "group",
+        display_name: "Operations",
+        thread_id: "42",
+      },
+      {
+        id: "session-3",
+        source: "telegram",
+        chat_id: "1234",
+        chat_type: "group",
+        display_name: "Operations",
+        thread_id: "99",
+      },
+      { id: "session-without-channel", source: "cron" },
+    ] satisfies HermesSession[];
+
+    expect(getHermesPlatformChannels(sessions)).toEqual([
+      {
+        id: "telegram:1234:42",
+        platform: "telegram",
+        displayName: "Operations",
+        chatId: "1234",
+        chatType: "group",
+        threadId: "42",
+        sessionCount: 2,
+      },
+      {
+        id: "telegram:1234:99",
+        platform: "telegram",
+        displayName: "Operations",
+        chatId: "1234",
+        chatType: "group",
+        threadId: "99",
+        sessionCount: 1,
+      },
+    ]);
   });
 });

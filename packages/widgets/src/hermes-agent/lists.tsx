@@ -1,43 +1,131 @@
 import dayjs from "dayjs";
-import { Badge, Group, Stack, Text } from "@mantine/core";
+import { Box, Group, Stack, Text, Tooltip, VisuallyHidden } from "@mantine/core";
+import {
+  IconApi,
+  IconBrandDiscord,
+  IconBrandSlack,
+  IconBrandTelegram,
+  IconBrandWhatsapp,
+  IconClock,
+  IconMessageCircle,
+  IconTerminal2,
+  IconWorld,
+} from "@tabler/icons-react";
 
 import type { HermesJob, HermesSession, HermesToolset, HermesPlatformStatus } from "@homarr/integrations/types";
 import { useScopedI18n } from "@homarr/translation/client";
 
-import { formatTokenCount, getHermesDate, getJobKey, getStatusColor, isJobFailed, isJobPaused } from "./utils";
+import { getHermesPlatformChannels, getJobKey, getStatusColor, isJobFailed, isJobPaused } from "./utils";
+import { HERMES_CHROME_TEXT_STYLE, HERMES_TECHNICAL_TEXT_STYLE, HERMES_THEME } from "./theme";
 
 interface PlatformsListProps {
   platforms: Record<string, HermesPlatformStatus>;
+  sessions: HermesSession[];
 }
 
-export function PlatformsList({ platforms }: PlatformsListProps) {
+export function PlatformsList({ platforms, sessions }: PlatformsListProps) {
   const t = useScopedI18n("widget.hermesAgent");
   const entries = Object.entries(platforms).toSorted(([nameA], [nameB]) => nameA.localeCompare(nameB));
+  const channels = getHermesPlatformChannels(sessions);
 
   if (entries.length === 0) return <EmptyText text={t("empty.platforms")} />;
 
   return (
     <Stack gap={4}>
-      {entries.map(([name, platform]) => (
-        <Group key={name} justify="space-between" wrap="nowrap" gap="xs">
-          <Group gap={6} wrap="nowrap" miw={0}>
-            <Badge variant="dot" color={getStatusColor(platform.state)} size="xs">
-              {platform.state ?? t("unknown")}
-            </Badge>
-            <Text size="xs" fw={500} lineClamp={1}>
-              {name}
-            </Text>
-          </Group>
-          {platform.updated_at && (
-            <Text size="xs" c="dimmed" ta="right" style={{ whiteSpace: "nowrap" }}>
-              {dayjs(platform.updated_at).fromNow()}
-            </Text>
-          )}
-        </Group>
-      ))}
+      {entries.map(([name, platform]) => {
+        const platformChannels = channels.filter((channel) => channel.platform === name.toLowerCase());
+
+        return (
+          <Stack key={name} gap={3}>
+            <Group justify="space-between" wrap="nowrap" gap={6}>
+              <Group gap={5} wrap="nowrap" miw={0}>
+                <Box
+                  component="span"
+                  w={7}
+                  h={7}
+                  style={{
+                    borderRadius: "50%",
+                    background: `var(--mantine-color-${getStatusColor(platform.state)}-6)`,
+                    flexShrink: 0,
+                  }}
+                  title={platform.state ?? t("unknown")}
+                >
+                  <VisuallyHidden>{platform.state ?? t("unknown")}</VisuallyHidden>
+                </Box>
+                <Text size="xs" fw={600} c={HERMES_THEME.textPrimary} lh={1.25}>
+                  {name}
+                </Text>
+                {platformChannels.length > 0 && (
+                  <Text
+                    size="xs"
+                    fw={700}
+                    c={HERMES_THEME.success}
+                    title={t("platforms.channelCount", { count: platformChannels.length })}
+                    style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap" }}
+                  >
+                    {platformChannels.length}
+                  </Text>
+                )}
+              </Group>
+              {platform.updated_at && (
+                <Text size="xs" c={HERMES_THEME.textTertiary} ta="right" lh={1.25} style={{ whiteSpace: "nowrap" }}>
+                  {dayjs(platform.updated_at).fromNow()}
+                </Text>
+              )}
+            </Group>
+            {platformChannels.length > 0 && (
+              <Stack gap={2} ml={12}>
+                {platformChannels.map((channel) => {
+                  const channelName =
+                    channel.displayName ?? maskChannelId(channel.chatId) ?? t("platforms.unknownChannel");
+                  const channelKind = channel.threadId ? `#${channel.threadId}` : channel.chatType?.toUpperCase();
+
+                  return (
+                    <Group key={channel.id} justify="space-between" wrap="nowrap" gap={5} mih={20}>
+                      <Group gap={4} wrap="nowrap" miw={0}>
+                        <Text size="xs" c={HERMES_THEME.textSecondary} lh={1.25} lineClamp={1} title={channelName}>
+                          {channelName}
+                        </Text>
+                        {channelKind && (
+                          <Text
+                            size="xs"
+                            fw={600}
+                            c={HERMES_THEME.textTertiary}
+                            title={
+                              channel.threadId
+                                ? t("platforms.topic", { id: channel.threadId })
+                                : (channel.chatType ?? undefined)
+                            }
+                            style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap" }}
+                          >
+                            {channelKind}
+                          </Text>
+                        )}
+                      </Group>
+                      <Text
+                        size="xs"
+                        c={HERMES_THEME.textTertiary}
+                        title={t("platforms.sessionCount", { count: channel.sessionCount })}
+                        style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap", flexShrink: 0 }}
+                      >
+                        ×{channel.sessionCount}
+                      </Text>
+                    </Group>
+                  );
+                })}
+              </Stack>
+            )}
+          </Stack>
+        );
+      })}
     </Stack>
   );
 }
+
+const maskChannelId = (chatId: string | null) => {
+  if (!chatId) return null;
+  return chatId.length > 4 ? `••••${chatId.slice(-4)}` : "••••";
+};
 
 interface SessionsListProps {
   sessions: HermesSession[];
@@ -45,39 +133,32 @@ interface SessionsListProps {
 
 export function SessionsList({ sessions }: SessionsListProps) {
   const t = useScopedI18n("widget.hermesAgent");
-  const visibleSessions = sessions.slice(0, 5);
+  const visibleSessions = sessions.slice(0, 15);
 
   if (visibleSessions.length === 0) return <EmptyText text={t("empty.sessions")} />;
 
   return (
-    <Stack gap={6}>
-      {visibleSessions.map((session) => (
-        <Stack key={session.id} gap={1}>
-          <Group justify="space-between" wrap="nowrap" gap="xs">
-            <Text size="xs" fw={500} lineClamp={1}>
-              {session.title ?? session.id}
+    <Stack gap={3}>
+      {visibleSessions.map((session) => {
+        const title = session.title ?? session.id;
+
+        return (
+          <Group key={session.id} gap={5} wrap="nowrap" mih={20}>
+            <Text
+              size="xs"
+              fw={500}
+              c={HERMES_THEME.textPrimary}
+              lh={1.3}
+              lineClamp={1}
+              title={title}
+              style={{ flex: 1 }}
+            >
+              {title}
             </Text>
-            {session.source && (
-              <Badge size="xs" variant="light">
-                {session.source}
-              </Badge>
-            )}
+            {session.source && <SessionSourceIcon source={session.source} />}
           </Group>
-          {session.preview && (
-            <Text size="xs" c="dimmed" lineClamp={1}>
-              {session.preview}
-            </Text>
-          )}
-          <Text size="xs" c="dimmed">
-            {t("sessions.meta", {
-              messages: `${session.message_count ?? 0}`,
-              tools: `${session.tool_call_count ?? 0}`,
-              tokens: formatTokenCount((session.input_tokens ?? 0) + (session.output_tokens ?? 0)),
-            })}
-            {session.last_active ? ` - ${getHermesDate(session.last_active).fromNow()}` : ""}
-          </Text>
-        </Stack>
-      ))}
+        );
+      })}
     </Stack>
   );
 }
@@ -88,33 +169,81 @@ interface JobsListProps {
 
 export function JobsList({ jobs }: JobsListProps) {
   const t = useScopedI18n("widget.hermesAgent");
-  const visibleJobs = jobs.slice(0, 5);
+  const visibleJobs = jobs.slice(0, 6);
 
   if (visibleJobs.length === 0) return <EmptyText text={t("empty.jobs")} />;
 
   return (
-    <Stack gap={6}>
+    <Stack gap={3}>
       {visibleJobs.map((job, index) => {
         const isFailed = isJobFailed(job);
         const isPaused = isJobPaused(job);
+        const name = job.name ?? job.id ?? job.job_id ?? t("jobs.unnamed");
+        const status = isFailed ? t("jobs.failedLabel") : isPaused ? t("jobs.paused") : t("jobs.enabled");
+        const schedule = `${job.schedule ?? t("jobs.noSchedule")}${
+          job.next_run_at ? ` - ${t("jobs.next", { when: dayjs(job.next_run_at).fromNow() })}` : ""
+        }`;
+
         return (
-          <Stack key={getJobKey(job, index)} gap={1}>
-            <Group justify="space-between" wrap="nowrap" gap="xs">
-              <Text size="xs" fw={500} lineClamp={1}>
-                {job.name ?? job.id ?? job.job_id ?? t("jobs.unnamed")}
-              </Text>
-              <Badge size="xs" variant="light" color={isFailed ? "red" : isPaused ? "yellow" : "green"}>
-                {isFailed ? t("jobs.failedLabel") : isPaused ? t("jobs.paused") : t("jobs.enabled")}
-              </Badge>
-            </Group>
-            <Text size="xs" c="dimmed">
-              {job.schedule ?? t("jobs.noSchedule")}
-              {job.next_run_at ? ` - ${t("jobs.next", { when: dayjs(job.next_run_at).fromNow() })}` : ""}
+          <Group key={getJobKey(job, index)} justify="space-between" wrap="nowrap" gap={5} mih={20}>
+            <Text
+              size="xs"
+              fw={500}
+              c={HERMES_THEME.textPrimary}
+              lh={1.3}
+              lineClamp={1}
+              title={`${name} · ${schedule}`}
+              style={{ flex: 1 }}
+            >
+              {name}
             </Text>
-          </Stack>
+            <Text
+              size="xs"
+              fw={700}
+              c={isFailed ? HERMES_THEME.error : isPaused ? HERMES_THEME.warning : HERMES_THEME.success}
+              lh={1.25}
+              title={schedule}
+              style={{ ...HERMES_CHROME_TEXT_STYLE, whiteSpace: "nowrap" }}
+            >
+              {status}
+            </Text>
+          </Group>
         );
       })}
     </Stack>
+  );
+}
+
+function SessionSourceIcon({ source }: { source: string }) {
+  const normalizedSource = source.toLowerCase();
+  const iconProps = { size: 14, stroke: 1.8, "aria-hidden": true } as const;
+  const sourceIcon = normalizedSource.includes("telegram") ? (
+    <IconBrandTelegram {...iconProps} color="#2aabee" />
+  ) : normalizedSource.includes("discord") ? (
+    <IconBrandDiscord {...iconProps} color="#5865f2" />
+  ) : normalizedSource.includes("slack") ? (
+    <IconBrandSlack {...iconProps} color="#e01e5a" />
+  ) : normalizedSource.includes("whatsapp") ? (
+    <IconBrandWhatsapp {...iconProps} color="#25d366" />
+  ) : normalizedSource.includes("cron") ? (
+    <IconClock {...iconProps} color={HERMES_THEME.warning} />
+  ) : normalizedSource.includes("api") ? (
+    <IconApi {...iconProps} color={HERMES_THEME.success} />
+  ) : normalizedSource.includes("web") ? (
+    <IconWorld {...iconProps} color={HERMES_THEME.success} />
+  ) : normalizedSource.includes("cli") || normalizedSource.includes("terminal") ? (
+    <IconTerminal2 {...iconProps} color={HERMES_THEME.textSecondary} />
+  ) : (
+    <IconMessageCircle {...iconProps} color={HERMES_THEME.textSecondary} />
+  );
+
+  return (
+    <Tooltip label={source} openDelay={400}>
+      <Box component="span" style={{ display: "inline-flex", flexShrink: 0 }}>
+        {sourceIcon}
+        <VisuallyHidden>{source}</VisuallyHidden>
+      </Box>
+    </Tooltip>
   );
 }
 
@@ -129,15 +258,28 @@ export function ToolsetsList({ toolsets }: ToolsetsListProps) {
   if (toolsets.length === 0) return <EmptyText text={t("empty.toolsets")} />;
 
   return (
-    <Stack gap={4}>
-      {enabledToolsets.slice(0, 8).map((toolset) => (
-        <Group key={toolset.name} justify="space-between" wrap="nowrap" gap="xs">
-          <Text size="xs" fw={500} lineClamp={1}>
+    <Stack gap={3}>
+      {enabledToolsets.slice(0, 10).map((toolset) => (
+        <Group key={toolset.name} justify="space-between" align="flex-start" wrap="nowrap" gap={5} mih={20}>
+          <Text
+            size="xs"
+            fw={500}
+            c={HERMES_THEME.textPrimary}
+            lh={1.3}
+            lineClamp={2}
+            title={toolset.label ?? toolset.name}
+          >
             {toolset.label ?? toolset.name}
           </Text>
-          <Badge size="xs" variant="light" color={toolset.configured === false ? "yellow" : "green"}>
-            {t("toolsets.tools", { count: toolset.tools.length })}
-          </Badge>
+          <Text
+            size="xs"
+            fw={700}
+            c={toolset.configured === false ? HERMES_THEME.warning : HERMES_THEME.success}
+            title={t("toolsets.tools", { count: toolset.tools.length })}
+            style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap", flexShrink: 0 }}
+          >
+            {toolset.tools.length}
+          </Text>
         </Group>
       ))}
       {enabledToolsets.length === 0 && <EmptyText text={t("empty.enabledToolsets")} />}
@@ -147,7 +289,7 @@ export function ToolsetsList({ toolsets }: ToolsetsListProps) {
 
 function EmptyText({ text }: { text: string }) {
   return (
-    <Text size="xs" c="dimmed" ta="center" py={4}>
+    <Text size="xs" c={HERMES_THEME.textTertiary} ta="center" py={4}>
       {text}
     </Text>
   );

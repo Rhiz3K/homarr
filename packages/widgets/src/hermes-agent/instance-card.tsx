@@ -1,10 +1,27 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
 import dayjs from "dayjs";
-import { Anchor, Avatar, Badge, Card, Divider, Group, Paper, SimpleGrid, Stack, Text } from "@mantine/core";
+import {
+  ActionIcon,
+  Anchor,
+  Avatar,
+  Badge,
+  Box,
+  Card,
+  Divider,
+  Group,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconActivity,
   IconCalendarTime,
   IconExternalLink,
+  IconEye,
+  IconEyeOff,
   IconGitCommit,
   IconMessageCircle,
   IconPackage,
@@ -18,17 +35,18 @@ import { useScopedI18n } from "@homarr/translation/client";
 
 import type { WidgetComponentProps } from "../definition";
 import { JobsList, PlatformsList, SessionsList, ToolsetsList } from "./lists";
+import { HERMES_CHROME_TEXT_STYLE, HERMES_TECHNICAL_TEXT_STYLE, HERMES_THEME } from "./theme";
 import type { HermesAgentInstance } from "./types";
 import { getJobSummary, getStatusColor } from "./utils";
 
 const HERMES_COLORS = {
-  border: "#CD7F32",
-  dim: "var(--mantine-color-dimmed)",
-  label: "var(--mantine-color-cyan-filled)",
-  ok: "var(--mantine-color-green-6)",
-  title: "var(--mantine-color-orange-filled)",
-  warn: "var(--mantine-color-orange-6)",
-  error: "var(--mantine-color-red-6)",
+  border: HERMES_THEME.borderStrong,
+  dim: HERMES_THEME.textTertiary,
+  label: HERMES_THEME.textPrimary,
+  ok: HERMES_THEME.success,
+  title: HERMES_THEME.textPrimary,
+  warn: HERMES_THEME.warning,
+  error: HERMES_THEME.error,
 } as const;
 
 type LayoutMode = "micro" | "strip" | "tall" | "standard" | "showcase";
@@ -106,14 +124,11 @@ export function HermesAgentInstanceCard({
   const iconSize =
     layoutMode === "micro" ? 7 : isMicroMetricMode ? 8 : dense ? 11 : layoutMode === "showcase" ? 15 : 13;
   const versionValue = getCompactVersionValue(version, dense || compactVersion, compactVersion);
-  const updateColor =
-    commitsBehind === null || commitsBehind === undefined
-      ? overview.update?.hasNewRelease
-        ? HERMES_COLORS.warn
-        : HERMES_COLORS.dim
-      : commitsBehind > 0
-        ? HERMES_COLORS.warn
-        : HERMES_COLORS.ok;
+  const updateColor = !overview.update
+    ? HERMES_COLORS.dim
+    : overview.update.hasNewRelease
+      ? HERMES_COLORS.warn
+      : HERMES_COLORS.ok;
   const jobsColor =
     jobSummary.total === 0 ? HERMES_COLORS.dim : jobSummary.failed > 0 ? HERMES_COLORS.error : HERMES_COLORS.ok;
   const skillsColor = overview.dataAvailability.skills
@@ -137,14 +152,13 @@ export function HermesAgentInstanceCard({
     : t("unknownShort");
   const jobsValue = overview.dataAvailability.jobs ? `${jobSummary.active}/${jobSummary.total}` : t("unknownShort");
   const sessionsValue = activeSessions ?? t("unknownShort");
-  const updateValue =
-    commitsBehind === null || commitsBehind === undefined
-      ? overview.update?.hasNewRelease
-        ? t("update.availableShort")
-        : t("unknownShort")
-      : commitsBehind > 0
+  const updateValue = !overview.update
+    ? t("unknownShort")
+    : !overview.update.hasNewRelease
+      ? t("update.currentShort")
+      : commitsBehind != null && commitsBehind > 0
         ? `+${commitsBehind}`
-        : t("update.currentShort");
+        : t("update.availableShort");
   const verboseStatusLabel =
     gatewayState === "auth_error" ? t("status.authError") : (gatewayState?.replaceAll("_", " ") ?? t("unknown"));
   const statusLabel =
@@ -156,7 +170,7 @@ export function HermesAgentInstanceCard({
   const visibleMetrics = getVisibleMetrics(layoutMode, [
     {
       id: "version",
-      icon: <IconPackage size={iconSize} />,
+      icon: <IconPackage size={iconSize} aria-hidden="true" />,
       label: t("summary.version"),
       value: versionValue,
       title: release ? `${version} (${release})` : version,
@@ -165,7 +179,7 @@ export function HermesAgentInstanceCard({
     },
     {
       id: "update",
-      icon: <IconGitCommit size={iconSize} />,
+      icon: <IconGitCommit size={iconSize} aria-hidden="true" />,
       label: t("summary.update"),
       value: updateValue,
       title: overview.update?.latestReleaseTag ?? release ?? undefined,
@@ -174,7 +188,7 @@ export function HermesAgentInstanceCard({
     },
     {
       id: "jobs",
-      icon: <IconCalendarTime size={iconSize} />,
+      icon: <IconCalendarTime size={iconSize} aria-hidden="true" />,
       label: t("summary.jobs"),
       value: jobsValue,
       detail:
@@ -186,7 +200,7 @@ export function HermesAgentInstanceCard({
     },
     {
       id: "skills",
-      icon: <IconSparkles size={iconSize} />,
+      icon: <IconSparkles size={iconSize} aria-hidden="true" />,
       label: t("summary.skills"),
       value: skillsValue,
       title: overview.dataAvailability.skills ? `${enabledSkills}/${overview.skills.length}` : t("unknownShort"),
@@ -195,7 +209,7 @@ export function HermesAgentInstanceCard({
     },
     {
       id: "platforms",
-      icon: <IconPlugConnected size={iconSize} />,
+      icon: <IconPlugConnected size={iconSize} aria-hidden="true" />,
       label: t("summary.platforms"),
       value: `${connectedPlatforms}/${platformEntries.length}`,
       color: platformsColor,
@@ -203,7 +217,7 @@ export function HermesAgentInstanceCard({
     },
     {
       id: "toolsets",
-      icon: <IconTools size={iconSize} />,
+      icon: <IconTools size={iconSize} aria-hidden="true" />,
       label: t("summary.toolsets"),
       value: toolsetsValue,
       color: toolsetsColor,
@@ -211,7 +225,7 @@ export function HermesAgentInstanceCard({
     },
     {
       id: "agents",
-      icon: <IconActivity size={iconSize} />,
+      icon: <IconActivity size={iconSize} aria-hidden="true" />,
       label: t("summary.activeAgents"),
       value: overview.health.active_agents,
       color: activeAgentsColor,
@@ -219,7 +233,7 @@ export function HermesAgentInstanceCard({
     },
     {
       id: "sessions",
-      icon: <IconMessageCircle size={iconSize} />,
+      icon: <IconMessageCircle size={iconSize} aria-hidden="true" />,
       label: t("summary.sessions"),
       value: sessionsValue,
       color: activeSessionsColor,
@@ -235,7 +249,13 @@ export function HermesAgentInstanceCard({
     >
       <Group justify="space-between" wrap="nowrap" gap={dense ? 4 : "xs"}>
         <Group gap={isMicroMetricMode ? 4 : "xs"} wrap="nowrap" miw={0}>
-          <Avatar src={getIconUrl("hermesAgent")} alt="Hermes Agent" size={getLogoSize(layoutMode)} radius="sm" />
+          <Avatar
+            src={getIconUrl("hermesAgent")}
+            alt="Hermes Agent"
+            size={getLogoSize(layoutMode)}
+            radius="sm"
+            styles={{ root: { border: `1px solid ${HERMES_THEME.borderStrong}`, background: HERMES_THEME.surface } }}
+          />
           <Stack gap={0} miw={0}>
             {overview.mode === "dashboard" ? (
               <Anchor
@@ -248,6 +268,7 @@ export function HermesAgentInstanceCard({
                 underline="never"
                 lineClamp={1}
                 title={`${instance.integrationName} ${t("meta.version", { version })}`}
+                style={{ fontFamily: HERMES_THEME.fontSans, textWrap: "balance" }}
               >
                 {titleLabel}
               </Anchor>
@@ -258,12 +279,13 @@ export function HermesAgentInstanceCard({
                 c={HERMES_COLORS.title}
                 lineClamp={1}
                 title={`${instance.integrationName} ${t("meta.version", { version })}`}
+                style={{ fontFamily: HERMES_THEME.fontSans, textWrap: "balance" }}
               >
                 {titleLabel}
               </Text>
             )}
             {showVersion && (
-              <Text fz={dense ? "10px" : "xs"} c={HERMES_COLORS.dim} lineClamp={1}>
+              <Text size="xs" c={HERMES_THEME.textSecondary} lineClamp={1}>
                 {t("meta.versionAndMode", { version, mode: t(`mode.${overview.mode}`) })}
               </Text>
             )}
@@ -274,6 +296,13 @@ export function HermesAgentInstanceCard({
           color={getStatusColor(gatewayState)}
           size={dense ? "xs" : "sm"}
           maw={isNarrow ? 44 : 110}
+          styles={{
+            root: {
+              background: HERMES_THEME.surfaceRaised,
+              border: `1px solid ${HERMES_THEME.border}`,
+            },
+            label: { color: HERMES_THEME.textPrimary, ...HERMES_CHROME_TEXT_STYLE },
+          }}
         >
           {statusLabel}
         </Badge>
@@ -312,10 +341,22 @@ export function HermesAgentInstanceCard({
 
       {showCardShell && (
         <Group justify="space-between" gap="xs" wrap="nowrap">
-          <Badge size="xs" variant="light" color={overview.mode === "apiServer" ? "blue" : "grape"}>
+          <Badge
+            size="xs"
+            variant="outline"
+            styles={{
+              root: { color: HERMES_THEME.textSecondary, borderColor: HERMES_THEME.border },
+              label: HERMES_CHROME_TEXT_STYLE,
+            }}
+          >
             {t(`mode.${overview.mode}`)}
           </Badge>
-          <Text fz="10px" c="dimmed" lineClamp={1} title={dayjs(instance.updatedAt).format("YYYY-MM-DD HH:mm:ss")}>
+          <Text
+            size="xs"
+            c={HERMES_THEME.textTertiary}
+            lineClamp={1}
+            title={dayjs(instance.updatedAt).format("YYYY-MM-DD HH:mm:ss")}
+          >
             {t("footer.updated", { when: dayjs(instance.updatedAt).fromNow() })}
           </Text>
         </Group>
@@ -342,6 +383,7 @@ interface DetailsGridProps {
 
 function DetailsGrid({ instance, options, routes, linkToDashboard, columns }: DetailsGridProps) {
   const t = useScopedI18n("widget.hermesAgent");
+  const [blurredSections, setBlurredSections] = useState<Set<string>>(() => new Set());
   const { overview } = instance;
   const platforms = overview.dashboardStatus?.gateway_platforms ?? overview.health.platforms;
   const sections = [
@@ -350,7 +392,7 @@ function DetailsGrid({ instance, options, routes, linkToDashboard, columns }: De
           id: "platforms",
           label: t("sections.platforms"),
           href: routes.sessions,
-          content: <PlatformsList platforms={platforms} />,
+          content: <PlatformsList platforms={platforms} sessions={overview.sessions} />,
         }
       : null,
     options.showSessions
@@ -391,29 +433,75 @@ function DetailsGrid({ instance, options, routes, linkToDashboard, columns }: De
 
   return (
     <SimpleGrid cols={Math.min(columns, sections.length)} spacing="xs" verticalSpacing="xs">
-      {sections.map((section) => (
-        <Paper key={section.id} withBorder radius="sm" p="xs" bg="var(--mantine-color-default-hover)" miw={0}>
-          <Group justify="space-between" gap={4} wrap="nowrap">
-            <Text size="xs" fw={700} c={HERMES_COLORS.label} lineClamp={1}>
-              {section.label}
-            </Text>
-            {linkToDashboard && (
-              <Anchor
-                href={section.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                c="dimmed"
-                lh={1}
-                aria-label={t("action.openSection", { section: section.label })}
-              >
-                <IconExternalLink size={13} />
-              </Anchor>
-            )}
-          </Group>
-          <Divider my={6} />
-          {section.content}
-        </Paper>
-      ))}
+      {sections.map((section) => {
+        const isBlurred = blurredSections.has(section.id);
+        const privacyLabel = t(isBlurred ? "action.showSectionContent" : "action.hideSectionContent", {
+          section: section.label,
+        });
+
+        return (
+          <Paper
+            key={section.id}
+            withBorder
+            radius="sm"
+            p={8}
+            miw={0}
+            style={{ background: HERMES_THEME.surface, borderColor: HERMES_THEME.border }}
+          >
+            <Group justify="space-between" gap={4} wrap="nowrap">
+              <Text size="xs" fw={700} c={HERMES_COLORS.label} lineClamp={1} style={HERMES_CHROME_TEXT_STYLE}>
+                {section.label}
+              </Text>
+              <Group gap={2} wrap="nowrap">
+                <Tooltip label={privacyLabel} openDelay={400}>
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    size="xs"
+                    aria-label={privacyLabel}
+                    aria-pressed={isBlurred}
+                    style={{ color: HERMES_THEME.textSecondary }}
+                    onClick={() => {
+                      setBlurredSections((current) => {
+                        const next = new Set(current);
+                        if (next.has(section.id)) next.delete(section.id);
+                        else next.add(section.id);
+                        return next;
+                      });
+                    }}
+                  >
+                    {isBlurred ? <IconEye size={13} aria-hidden="true" /> : <IconEyeOff size={13} aria-hidden="true" />}
+                  </ActionIcon>
+                </Tooltip>
+                {linkToDashboard && (
+                  <Anchor
+                    href={section.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    c={HERMES_THEME.textSecondary}
+                    lh={1}
+                    aria-label={t("action.openSection", { section: section.label })}
+                  >
+                    <IconExternalLink size={13} aria-hidden="true" />
+                  </Anchor>
+                )}
+              </Group>
+            </Group>
+            <Divider my={4} color={HERMES_THEME.border} />
+            <Box
+              aria-hidden={isBlurred}
+              style={{
+                filter: isBlurred ? "blur(6px)" : undefined,
+                opacity: isBlurred ? 0.72 : 1,
+                pointerEvents: isBlurred ? "none" : undefined,
+                userSelect: isBlurred ? "none" : undefined,
+              }}
+            >
+              {section.content}
+            </Box>
+          </Paper>
+        );
+      })}
     </SimpleGrid>
   );
 }
@@ -421,7 +509,7 @@ function DetailsGrid({ instance, options, routes, linkToDashboard, columns }: De
 function UnavailableText() {
   const t = useScopedI18n("widget.hermesAgent");
   return (
-    <Text size="xs" c="dimmed" ta="center" py={4}>
+    <Text size="xs" c={HERMES_THEME.textTertiary} ta="center" py={4}>
       {t("empty.unavailable")}
     </Text>
   );
@@ -452,23 +540,16 @@ function MetricTile({ icon, label, value, title, detail, color, href, mode, hide
         p={1}
         miw={0}
         style={{
-          background: "var(--mantine-color-default-hover)",
-          border: `1px solid rgba(205, 127, 50, 0.35)`,
-          borderRadius: 6,
-          boxShadow: "inset 0 0 0 1px rgba(255, 215, 0, 0.04)",
+          background: HERMES_THEME.surface,
+          border: `1px solid ${HERMES_THEME.border}`,
+          borderRadius: 8,
           overflow: "hidden",
         }}
       >
         <Text c={HERMES_COLORS.dim} lh={1} style={{ display: "flex", flexShrink: 0 }}>
           {icon}
         </Text>
-        <MetricValue
-          href={href}
-          value={value}
-          title={valueTitle}
-          color={color}
-          fontSize={mode === "micro" ? "8px" : "9px"}
-        />
+        <MetricValue href={href} value={value} title={valueTitle} color={color} fontSize="xs" />
       </Group>
     );
   }
@@ -478,11 +559,9 @@ function MetricTile({ icon, label, value, title, detail, color, href, mode, hide
       gap={0}
       p={isDense ? 3 : 5}
       style={{
-        border: "1px solid var(--mantine-color-default-border)",
-        background: "var(--mantine-color-default-hover)",
-        borderColor: "rgba(205, 127, 50, 0.32)",
-        borderRadius: isDense ? 6 : 8,
-        boxShadow: "inset 0 0 0 1px rgba(255, 215, 0, 0.04)",
+        border: `1px solid ${HERMES_THEME.border}`,
+        background: HERMES_THEME.surface,
+        borderRadius: 8,
         overflow: "hidden",
       }}
     >
@@ -490,14 +569,19 @@ function MetricTile({ icon, label, value, title, detail, color, href, mode, hide
         <Text c={HERMES_COLORS.dim} lh={1} style={{ display: "flex", flexShrink: 0 }}>
           {icon}
         </Text>
-        <Text fz={isDense ? "9px" : "xs"} c={HERMES_COLORS.label} lineClamp={1}>
+        <Text
+          size="xs"
+          c={HERMES_COLORS.label}
+          lineClamp={1}
+          style={{ ...HERMES_CHROME_TEXT_STYLE, letterSpacing: "0.04em", minWidth: 0 }}
+        >
           {label}
         </Text>
       </Group>
       <Group gap={isDense ? 2 : 4} wrap="nowrap" miw={0}>
-        <MetricValue href={href} value={value} title={valueTitle} color={color} fontSize={isDense ? "11px" : "sm"} />
+        <MetricValue href={href} value={value} title={valueTitle} color={color} fontSize={isDense ? "xs" : "sm"} />
         {detail && !hideDetail && (
-          <Text fz={isDense ? "9px" : "xs"} c={HERMES_COLORS.dim} lineClamp={1}>
+          <Text size="xs" c={HERMES_COLORS.dim} lineClamp={1}>
             {detail}
           </Text>
         )}
@@ -517,7 +601,14 @@ interface MetricValueProps {
 function MetricValue({ href, value, title, color, fontSize }: MetricValueProps) {
   if (!href) {
     return (
-      <Text fz={fontSize} fw={700} c={color ?? "inherit"} lineClamp={1} title={title}>
+      <Text
+        fz={fontSize}
+        fw={700}
+        c={color ?? "inherit"}
+        lineClamp={1}
+        title={title}
+        style={HERMES_TECHNICAL_TEXT_STYLE}
+      >
         {value}
       </Text>
     );
@@ -534,6 +625,7 @@ function MetricValue({ href, value, title, color, fontSize }: MetricValueProps) 
       underline="never"
       lineClamp={1}
       title={title}
+      style={HERMES_TECHNICAL_TEXT_STYLE}
     >
       {value}
     </Anchor>
@@ -634,10 +726,9 @@ function getLogoSize(mode: LayoutMode) {
 function getTitleSize(mode: LayoutMode) {
   switch (mode) {
     case "micro":
-      return "10px";
     case "strip":
     case "tall":
-      return "11px";
+      return "xs";
     case "standard":
       return "sm";
     case "showcase":
@@ -647,9 +738,11 @@ function getTitleSize(mode: LayoutMode) {
 
 function getCardStyle() {
   return {
-    background: "linear-gradient(135deg, var(--mantine-color-body), var(--mantine-color-default-hover))",
-    border: `1px solid rgba(205, 127, 50, 0.38)`,
-    boxShadow: "inset 0 0 0 1px rgba(255, 215, 0, 0.06), 0 0 18px rgba(255, 191, 0, 0.08)",
+    background: `radial-gradient(circle at top right, ${HERMES_THEME.glow}, transparent 42%), ${HERMES_THEME.background}`,
+    border: `1px solid ${HERMES_THEME.borderStrong}`,
+    boxShadow: `inset 0 1px 0 ${HERMES_THEME.border}, 0 0 20px rgba(4, 28, 28, 0.2)`,
+    color: HERMES_THEME.textPrimary,
+    fontFamily: HERMES_THEME.fontSans,
     overflow: "hidden",
   };
 }
@@ -660,10 +753,10 @@ function getContentStyle(mode: LayoutMode) {
   }
 
   return {
-    background: "var(--mantine-color-default-hover)",
+    background: HERMES_THEME.surface,
     borderLeft: `2px solid ${HERMES_COLORS.border}`,
-    borderRadius: 6,
-    boxShadow: "inset 0 0 0 1px rgba(255, 215, 0, 0.05)",
+    borderRadius: 8,
+    boxShadow: `inset 0 0 0 1px ${HERMES_THEME.border}`,
     overflow: "hidden",
     paddingLeft: 3,
   };

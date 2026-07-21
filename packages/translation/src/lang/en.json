@@ -2541,7 +2541,12 @@
         "enabledToolsets": "No enabled toolsets",
         "unavailable": "This endpoint is not available"
       },
-      "sessions": { "meta": "{messages} messages - {tools} tool calls - {tokens} tokens" },
+      "platforms": {
+        "channelCount": "{count, plural, =1 {# channel} other {# channels}}",
+        "sessionCount": "{count, plural, =1 {# session} other {# sessions}}",
+        "topic": "topic {id}",
+        "unknownChannel": "Unknown channel"
+      },
       "jobs": {
         "unnamed": "Unnamed job",
         "enabled": "Enabled",
@@ -2556,7 +2561,9 @@
         "currentShort": "OK"
       },
       "action": {
-        "openSection": "Open {section} in Hermes Agent"
+        "openSection": "Open {section} in Hermes Agent",
+        "hideSectionContent": "Blur {section}",
+        "showSectionContent": "Reveal {section}"
       },
       "toolsets": { "tools": "{count, plural, =1 {# tool} other {# tools}}" },
       "footer": { "updated": "Updated {when}" },

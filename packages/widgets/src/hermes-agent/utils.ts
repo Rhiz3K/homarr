@@ -1,6 +1,14 @@
-import dayjs from "dayjs";
+import type { HermesJob, HermesSession } from "@homarr/integrations/types";
 
-import type { HermesJob } from "@homarr/integrations/types";
+export interface HermesPlatformChannel {
+  id: string;
+  platform: string;
+  displayName: string | null;
+  chatId: string | null;
+  chatType: string | null;
+  threadId: string | null;
+  sessionCount: number;
+}
 
 export const getStatusColor = (status: string | null | undefined) => {
   switch (status?.toLowerCase()) {
@@ -61,11 +69,31 @@ export const getJobSummary = (jobs: HermesJob[]) => {
   );
 };
 
-export const formatTokenCount = (value: number | null | undefined) => {
-  if (!value) return "0";
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-  return value.toString();
-};
+export const getHermesPlatformChannels = (sessions: HermesSession[]) => {
+  const channels = new Map<string, HermesPlatformChannel>();
 
-export const getHermesDate = (value: string | number) => (typeof value === "number" ? dayjs.unix(value) : dayjs(value));
+  for (const session of sessions) {
+    const platform = session.source?.toLowerCase();
+    if (!platform || (!session.chat_id && !session.display_name)) continue;
+
+    const id = `${platform}:${session.chat_id ?? session.display_name}:${session.thread_id ?? "root"}`;
+    const existing = channels.get(id);
+
+    if (existing) {
+      existing.sessionCount += 1;
+      continue;
+    }
+
+    channels.set(id, {
+      id,
+      platform,
+      displayName: session.display_name ?? null,
+      chatId: session.chat_id ?? null,
+      chatType: session.chat_type ?? null,
+      threadId: session.thread_id ?? null,
+      sessionCount: 1,
+    });
+  }
+
+  return [...channels.values()];
+};
