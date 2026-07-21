@@ -29,24 +29,27 @@ The Hermes Agent widget summarizes gateway health and readiness, installed versi
 
 ### Summary metrics
 
-| Metric        | Description                                                                                              |
-| ------------- | -------------------------------------------------------------------------------------------------------- |
-| **Version**   | Hermes Agent application version reported by the API server or dashboard.                                |
-| **Update**    | Whether the dashboard release is current, has a newer release, or is commits behind the upstream branch. |
-| **Jobs**      | Active scheduled jobs compared with all reported jobs; failed jobs use an error state.                   |
-| **Skills**    | Enabled skills compared with all discovered skills.                                                      |
-| **Platforms** | Connected messaging platforms compared with all configured platforms.                                    |
-| **Toolsets**  | Enabled toolsets compared with all discovered toolsets.                                                  |
-| **Agents**    | Agents currently active in the gateway.                                                                  |
-| **Sessions**  | Active or recently returned sessions, depending on the selected Hermes surface.                          |
+| Metric        | Description                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| **Version**   | Hermes Agent application version reported by the API server or dashboard.                  |
+| **Update**    | Whether the dashboard release is current or a newer published Hermes release is available. |
+| **Jobs**      | Active scheduled jobs compared with all reported jobs; failed jobs use an error state.     |
+| **Skills**    | Enabled skills compared with all discovered skills.                                        |
+| **Platforms** | Connected messaging platforms compared with all configured platforms.                      |
+| **Toolsets**  | Enabled toolsets compared with all discovered toolsets.                                    |
+| **Agents**    | Agents currently active in the gateway.                                                    |
+| **Sessions**  | Active or recently returned sessions, depending on the selected Hermes surface.            |
 
 ### Responsive layout
 
 - Small tiles prioritize version, update, job, and skill health.
 - Medium tiles add platforms, toolsets, agents, and sessions.
-- Large tiles show optional platform, recent-session, scheduled-job, and toolset sections. Each section can be disabled in the widget configuration.
+- Large tiles show optional platform, recent-session, scheduled-job, and toolset sections. Each section can be disabled in the widget configuration or temporarily blurred with its privacy control.
+- The detailed card follows the canonical Nous Research Hermes Teal direction: a deep teal canvas, warm cream text, emerald and amber state accents, technical monospace values, and uppercase brand chrome.
+- Messaging platforms use compact rows to show every distinct chat and topic returned in the fetched session window instead of collapsing the list behind a remainder count. Channel IDs are masked when no display name is available.
+- Recent sessions use single-line titles with compact source icons for Telegram, cron, web, API, CLI, and other adapters. Message previews, user identifiers, and token or cost metrics are stripped on the server and never reach the browser.
 - Dashboard mode adds direct links to matching Hermes dashboard sections. API server mode displays the same read-only data without invalid dashboard links.
-- Scheduled jobs show only their name, state, and schedule. Raw job prompts and scripts are never exposed in the widget because they can contain sensitive values.
+- Scheduled jobs use one row per job with the name and state; the schedule remains available as hover text. Raw job prompts and scripts are never exposed because they can contain sensitive values.
 
 ### Data modes and refresh
 
