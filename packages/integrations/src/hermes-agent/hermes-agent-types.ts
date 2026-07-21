@@ -134,24 +134,17 @@ export const hermesModelsResponseSchema = z.object({
   data: z.array(hermesModelSchema),
 });
 
+// Only the fields the widget renders are parsed; previews, user ids, and
+// usage metrics stay on the server because they can contain sensitive values.
 export const hermesSessionSchema = z.object({
   id: z.string(),
   source: z.string().nullish(),
-  user_id: z.string().nullish(),
   chat_id: z.string().nullish(),
   chat_type: z.string().nullish(),
   display_name: z.string().nullish(),
   thread_id: z.string().nullish(),
-  model: z.string().nullish(),
   title: z.string().nullish(),
-  message_count: z.number().nullish(),
-  tool_call_count: z.number().nullish(),
-  input_tokens: z.number().nullish(),
-  output_tokens: z.number().nullish(),
-  estimated_cost_usd: z.number().nullish(),
-  actual_cost_usd: z.number().nullish(),
   last_active: z.union([z.string(), z.number()]).nullish(),
-  preview: z.string().nullish(),
 });
 
 export type HermesSession = z.infer<typeof hermesSessionSchema>;

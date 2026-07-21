@@ -7,7 +7,7 @@ import { fetchWithTrustedCertificatesAsync } from "@homarr/core/infrastructure/h
 
 import type { IntegrationTestingInput } from "../../base/integration";
 import { HermesAgentIntegration } from "../hermes-agent-integration";
-import { hermesJobSchema } from "../hermes-agent-types";
+import { hermesJobSchema, hermesSessionSchema } from "../hermes-agent-types";
 
 vi.mock("@homarr/core/infrastructure/http", () => ({
   fetchWithTrustedCertificatesAsync: vi.fn(),
@@ -85,6 +85,29 @@ describe("HermesAgentIntegration", () => {
     });
 
     expect(job).not.toHaveProperty("prompt");
+  });
+
+  test("session data strips previews and usage metadata that may contain sensitive values", () => {
+    const session = hermesSessionSchema.parse({
+      id: "session-1",
+      source: "telegram",
+      title: "Team chat",
+      preview: "content of the most recent message",
+      user_id: "user-1",
+      model: "hermes-agent",
+      message_count: 3,
+      tool_call_count: 1,
+      input_tokens: 100,
+      output_tokens: 50,
+      estimated_cost_usd: 0.5,
+      actual_cost_usd: 0.4,
+    });
+
+    expect(session).toMatchObject({ id: "session-1", source: "telegram", title: "Team chat" });
+    expect(session).not.toHaveProperty("preview");
+    expect(session).not.toHaveProperty("user_id");
+    expect(session).not.toHaveProperty("input_tokens");
+    expect(session).not.toHaveProperty("estimated_cost_usd");
   });
 
   test("testingAsync checks health and authenticated capabilities", async () => {
