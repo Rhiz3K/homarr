@@ -135,7 +135,7 @@ export class HermesAgentIntegration extends Integration {
               this.getJsonAsync(
                 "/api/sessions",
                 hermesSessionsResponseSchema,
-                { limit: 10, order: "recent" },
+                { limit: 50, order: "recent" },
                 false,
                 dashboardHeaders,
               ),

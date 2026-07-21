@@ -255,6 +255,10 @@ describe("HermesAgentIntegration", () => {
           {
             id: "session-1",
             source: "api_server",
+            chat_id: "channel-1",
+            chat_type: "channel",
+            display_name: "Operations",
+            thread_id: "topic-7",
             title: "Dashboard session",
             message_count: 3,
             tool_call_count: 1,
@@ -300,6 +304,12 @@ describe("HermesAgentIntegration", () => {
     expect(result.models).toHaveLength(1);
     expect(result.sessions).toHaveLength(1);
     expect(result.sessions[0]?.last_active).toBe(1_767_225_600);
+    expect(result.sessions[0]).toMatchObject({
+      chat_id: "channel-1",
+      chat_type: "channel",
+      display_name: "Operations",
+      thread_id: "topic-7",
+    });
     expect(result.jobs).toHaveLength(1);
     expect(result.jobs[0]?.schedule).toBe("0 9 * * *");
     expect(result.toolsets).toHaveLength(1);
@@ -399,7 +409,7 @@ describe("HermesAgentIntegration", () => {
     const dashboardSessionsUrl = mockFetchWithTrustedCertificates.mock.calls
       .map(([url]) => getRequestUrl(url))
       .find((url) => url.pathname === "/api/sessions");
-    expect(dashboardSessionsUrl?.searchParams.get("limit")).toBe("10");
+    expect(dashboardSessionsUrl?.searchParams.get("limit")).toBe("50");
     expect(dashboardSessionsUrl?.searchParams.get("order")).toBe("recent");
   });
 
