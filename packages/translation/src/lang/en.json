@@ -2515,7 +2515,15 @@
         "dashboard": "Dashboard"
       },
       "status": {
-        "authError": "Authentication error"
+        "authError": "Authentication error",
+        "short": {
+          "ok": "OK",
+          "busy": "BUSY",
+          "warn": "WARN",
+          "auth": "AUTH",
+          "error": "ERR",
+          "wait": "WAIT"
+        }
       },
       "summary": {
         "activeAgents": "Agents",

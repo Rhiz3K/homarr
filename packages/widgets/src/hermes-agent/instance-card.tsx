@@ -32,7 +32,7 @@ import type { MetricDefinition } from "./metric-tile";
 import { MetricTile } from "./metric-tile";
 import { HERMES_CHROME_TEXT_STYLE, HERMES_THEME } from "./theme";
 import type { HermesAgentInstance } from "./types";
-import { getHermesGatewayState, getJobSummary, getStatusColor } from "./utils";
+import { getCompactStatusKey, getHermesGatewayState, getJobSummary, getStatusColor } from "./utils";
 
 interface HermesAgentInstanceCardProps {
   instance: HermesAgentInstance;
@@ -126,8 +126,11 @@ export function HermesAgentInstanceCard({
         : t("update.availableShort");
   const verboseStatusLabel =
     gatewayState === "auth_error" ? t("status.authError") : (gatewayState?.replaceAll("_", " ") ?? t("unknown"));
-  const statusLabel =
-    isNarrow || layoutMode === "micro" ? getCompactStatusLabel(gatewayState ?? t("unknown")) : verboseStatusLabel;
+  const compactStatusKey = gatewayState ? getCompactStatusKey(gatewayState) : null;
+  const compactStatusLabel = compactStatusKey
+    ? t(`status.short.${compactStatusKey}`)
+    : abbreviateStatus(gatewayState ?? t("unknown"));
+  const statusLabel = isNarrow || layoutMode === "micro" ? compactStatusLabel : verboseStatusLabel;
   const titleLabel = layoutMode === "micro" || isNarrow ? "H" : instance.integrationName;
   const showVersion = layoutMode !== "micro" && !isNarrow;
   const showCardShell = layoutMode === "standard" || layoutMode === "showcase";
@@ -355,36 +358,6 @@ function getNeutralCountColor(value: number | null) {
   return value !== null && value > 0 ? HERMES_THEME.textPrimary : HERMES_THEME.textTertiary;
 }
 
-function getCompactStatusLabel(status: string) {
-  switch (status.toLowerCase()) {
-    case "connected":
-    case "ok":
-    case "ready":
-    case "running":
-      return "OK";
-    case "busy":
-      return "BUSY";
-    case "degraded":
-      return "WARN";
-    case "auth_error":
-      return "AUTH";
-    case "error":
-    case "unhealthy":
-    case "not_ready":
-    case "disconnected":
-    case "failed":
-    case "fatal":
-    case "startup_failed":
-    case "stopped":
-      return "ERR";
-    case "draining":
-    case "queued":
-    case "retrying":
-    case "starting":
-    case "stopping":
-    case "waiting_for_approval":
-      return "WAIT";
-    default:
-      return status.length > 3 ? status.slice(0, 3).toUpperCase() : status.toUpperCase();
-  }
+function abbreviateStatus(status: string) {
+  return status.length > 3 ? status.slice(0, 3).toUpperCase() : status.toUpperCase();
 }

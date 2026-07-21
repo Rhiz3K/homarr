@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import type { HermesJob, HermesSession } from "@homarr/integrations/types";
 
 import {
+  getCompactStatusKey,
   getHermesGatewayState,
   getHermesPlatformChannels,
   getJobSummary,
@@ -39,6 +40,13 @@ describe("Hermes Agent widget utilities", () => {
     expect(isJobFailed(failedJob)).toBe(true);
     expect(isJobPaused(pausedJob)).toBe(true);
     expect(getJobSummary(jobs)).toEqual({ total: 3, active: 2, failed: 1, paused: 1 });
+  });
+
+  test("maps gateway states to compact label keys", () => {
+    expect(getCompactStatusKey("running")).toBe("ok");
+    expect(getCompactStatusKey("waiting_for_approval")).toBe("wait");
+    expect(getCompactStatusKey("startup_failed")).toBe("error");
+    expect(getCompactStatusKey("something_else")).toBeNull();
   });
 
   test("derives the gateway state with auth, readiness, and busy precedence", () => {
