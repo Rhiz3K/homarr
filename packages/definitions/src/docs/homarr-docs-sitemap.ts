@@ -119,6 +119,7 @@ export type HomarrDocumentationPath =
   | "/docs/tags/variables"
   | "/docs/tags/widgets"
   | "/docs/advanced/command-line"
+  | "/docs/advanced/command-line/development"
   | "/docs/advanced/command-line/fix-usernames"
   | "/docs/advanced/command-line/integrations"
   | "/docs/advanced/command-line/password-recovery"
@@ -209,6 +210,7 @@ export type HomarrDocumentationPath =
   | "/docs/integrations/unifi-controller"
   | "/docs/integrations/unraid"
   | "/docs/integrations/uptime-kuma"
+  | "/docs/integrations/whats-up-docker"
   | "/docs/management/api"
   | "/docs/management/apps"
   | "/docs/management/backup"
@@ -275,6 +277,7 @@ export type HomarrDocumentationPath =
   | "/docs/widgets/video"
   | "/docs/widgets/vpn"
   | "/docs/widgets/weather"
+  | "/docs/widgets/whats-up-docker"
   | ""
   | "/sitemap.xml"
   | "/docs/integrations/sabnzbd"
@@ -329,6 +332,7 @@ export type HomarrDocumentationPath =
   | "/docs/integrations/peanut"
   | "/docs/integrations/beszel"
   | "/docs/integrations/traefik"
+  | "/docs/integrations/whats-up-docker"
   | "/docs/widgets/clock"
   | "/docs/widgets/weather"
   | "/docs/widgets/app"
@@ -381,4 +385,5 @@ export type HomarrDocumentationPath =
   | "/docs/widgets/beszel-alerts"
   | "/docs/widgets/beszel-system-stats"
   | "/docs/widgets/traefik"
-  | "/docs/widgets/custom-api";
+  | "/docs/widgets/custom-api"
+  | "/docs/widgets/whats-up-docker";
