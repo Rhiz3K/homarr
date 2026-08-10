@@ -55,5 +55,6 @@ export const integrationDocSlugs: Record<IntegrationKind, string | null> = {
   beszel: "beszel",
   traefik: "traefik",
   archiveTeamWarrior: null,
+  wud: "whats-up-docker",
   mock: null,
 };
