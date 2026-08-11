@@ -359,7 +359,7 @@ export const integrationDefs = {
   hermesAgent: {
     name: "Hermes Agent",
     secretKinds: [["apiKey"], []],
-    iconUrl: "https://hermes-agent.nousresearch.com/docs/img/logo.png",
+    iconUrl: "https://hermes-agent.nousresearch.com/favicon.ico",
     defaultUrl: "http://127.0.0.1:8642",
     category: ["automation"],
     documentationUrl: createDocumentationLink("/docs/integrations/hermes-agent"),

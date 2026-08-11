@@ -1,21 +1,209 @@
 import type { HermesTheme } from "./theme";
 
-export type LayoutMode = "micro" | "strip" | "tall" | "standard" | "showcase";
+export type LayoutMode = "micro" | "mini" | "strip" | "tall" | "standard" | "showcase";
+
+export interface DetailsLayout {
+  columns: number;
+  maxSections: number;
+  itemLimit: number;
+}
+
+export interface JobListLayout {
+  lineClamp: 1 | 2 | 3;
+  maxItems: number;
+}
+
+export interface HermesTypographyScale {
+  title: number;
+  meta: number;
+  status: number;
+  metricLabel: number;
+  metricValue: number;
+  metricDetail: number;
+  footer: number;
+  badge: number;
+}
+
+export interface DetailsTypographyScale {
+  panelWidth: number;
+  heading: number;
+  item: number;
+  auxiliary: number;
+  icon: number;
+  indicator: number;
+  rowGap: number;
+}
 
 export function getLayoutMode(width: number, height: number): LayoutMode {
-  if (width < 130 && height < 130) return "micro";
-  if (height < 130) return "strip";
-  if (width < 150) return "tall";
+  const aspectRatio = width / Math.max(height, 1);
+
+  if (height < 190) {
+    if (aspectRatio < 1.45) return "micro";
+    if (aspectRatio < 2.65) return "mini";
+  }
+
+  if (height < 170) return "strip";
+  // A logical W1 tile can be wider than 150px on a large board. Preserve its
+  // square and portrait layouts until the container is wide enough for W2.
+  if (width < 220) {
+    if (aspectRatio < 0.75) return "tall";
+    if (aspectRatio < 1.45) return "micro";
+  }
   if (width >= 380 && height >= 190) return "showcase";
   return "standard";
+}
+
+export function getDetailsLayout(
+  width: number,
+  height: number,
+  mode: LayoutMode = getLayoutMode(width, height),
+): DetailsLayout | null {
+  if ((mode !== "standard" && mode !== "showcase") || width < 260) return null;
+
+  const availableHeight = height - (mode === "showcase" ? 198 : 170);
+  const columns = width >= 720 ? 4 : width >= 380 ? 2 : 1;
+  const sectionGap = 8;
+  const minimumSectionHeight = 112;
+  const availableGridRows = Math.floor((availableHeight + sectionGap) / (minimumSectionHeight + sectionGap));
+  if (availableGridRows < 1) return null;
+
+  const maxSections = Math.min(4, columns * availableGridRows);
+  const renderedGridRows = Math.ceil(maxSections / columns);
+  const sectionHeight = Math.floor(
+    (availableHeight - sectionGap * Math.max(0, renderedGridRows - 1)) / renderedGridRows,
+  );
+  const itemLimit = Math.max(1, Math.floor((sectionHeight - 53) / 23));
+
+  return { columns, maxSections, itemLimit };
+}
+
+export function getJobListLayout(width: number, columns: number, itemLimit: number): JobListLayout {
+  const approximatePanelWidth = getDetailsTypography(width, columns).panelWidth;
+  if (approximatePanelWidth >= 280) return { lineClamp: 1, maxItems: itemLimit };
+
+  const singleLineRowHeight = 23;
+  const availableListHeight = itemLimit * singleLineRowHeight;
+  const lineClamp = approximatePanelWidth < 220 ? 3 : 2;
+  const rowHeight = lineClamp === 3 ? 47 : 35;
+  const maxItems = Math.max(1, Math.floor((availableListHeight + 3) / rowHeight));
+
+  return { lineClamp, maxItems };
+}
+
+export function getTypographyScale(
+  width: number,
+  height: number,
+  mode: LayoutMode = getLayoutMode(width, height),
+): HermesTypographyScale {
+  switch (mode) {
+    case "micro":
+      return withResponsiveMetrics(width, height, mode, {
+        title: 10,
+        meta: 9,
+        status: 9,
+        metricLabel: 8,
+        metricValue: 10.5,
+        metricDetail: 8.5,
+        footer: 9,
+        badge: 8,
+      });
+    case "mini":
+      return withResponsiveMetrics(width, height, mode, {
+        title: 11.5,
+        meta: 9.5,
+        status: 9,
+        metricLabel: 9,
+        metricValue: 11.5,
+        metricDetail: 9,
+        footer: 9,
+        badge: 8.5,
+      });
+    case "strip":
+      return withResponsiveMetrics(
+        width,
+        height,
+        mode,
+        createFluidTypography(width, 340, 800, {
+          title: [12, 14],
+          meta: [10, 12],
+          status: [9, 11],
+          metricLabel: [9, 11],
+          metricValue: [12, 15],
+          metricDetail: [9, 11],
+          footer: [9, 11],
+          badge: [9, 10],
+        }),
+      );
+    case "tall":
+      return withResponsiveMetrics(width, height, mode, {
+        title: 10.5,
+        meta: 9,
+        status: 9,
+        metricLabel: 9,
+        metricValue: 11,
+        metricDetail: 9,
+        footer: 9,
+        badge: 8.5,
+      });
+    case "standard":
+      return withResponsiveMetrics(
+        width,
+        height,
+        mode,
+        createFluidTypography(width, 200, 380, {
+          title: [12.5, 15],
+          meta: [10, 12],
+          status: [9.5, 11],
+          metricLabel: [10, 12],
+          metricValue: [12, 14],
+          metricDetail: [10, 11.5],
+          footer: [10, 11],
+          badge: [9, 10],
+        }),
+      );
+    case "showcase":
+      return withResponsiveMetrics(
+        width,
+        height,
+        mode,
+        createFluidTypography(width, 380, 900, {
+          title: [16, 18],
+          meta: [11, 13],
+          status: [10, 12],
+          metricLabel: [12, 13],
+          metricValue: [14, 16],
+          metricDetail: [11, 12],
+          footer: [11, 12],
+          badge: [9, 11],
+        }),
+      );
+  }
+}
+
+export function getDetailsTypography(width: number, columns: number): DetailsTypographyScale {
+  const safeColumns = Math.max(columns, 1);
+  const panelWidth = Math.max(0, (width - 16 - (safeColumns - 1) * 8) / safeColumns);
+  const item = getFluidValue(panelWidth, 170, 360, 11, 14);
+
+  return {
+    panelWidth,
+    heading: Math.max(10.5, item - 0.5),
+    item,
+    auxiliary: Math.max(10, item - 1),
+    icon: Math.round(item + 1),
+    indicator: item >= 13 ? 7 : 6,
+    rowGap: item >= 13 ? 4 : 3,
+  };
 }
 
 export function getMetricColumns(mode: LayoutMode, width: number) {
   switch (mode) {
     case "micro":
       return 2;
+    case "mini":
+      return 3;
     case "strip":
-      return width >= 300 ? 4 : 3;
+      return width >= 450 ? 6 : 3;
     case "tall":
       return 1;
     case "showcase":
@@ -25,22 +213,36 @@ export function getMetricColumns(mode: LayoutMode, width: number) {
   }
 }
 
-export function getVisibleMetricIds(mode: LayoutMode) {
+export function getVisibleMetricIds(mode: LayoutMode, hasUpdate: boolean) {
+  const metricIds = [
+    "version",
+    ...(hasUpdate ? ["update"] : []),
+    "jobs",
+    "skills",
+    "platforms",
+    "toolsets",
+    "agents",
+    "sessions",
+  ];
+
   switch (mode) {
     case "micro":
-      return ["version", "update", "jobs", "skills"];
+      return metricIds.slice(0, 4);
+    case "mini":
+      return metricIds.slice(0, 6);
     case "strip":
+      return metricIds.slice(0, 6);
     case "tall":
-      return ["version", "update", "jobs", "skills", "platforms", "toolsets"];
     case "standard":
     case "showcase":
-      return ["version", "update", "jobs", "skills", "platforms", "toolsets", "agents", "sessions"];
+      return metricIds;
   }
 }
 
 export function getContentGap(mode: LayoutMode) {
   switch (mode) {
     case "micro":
+    case "mini":
     case "strip":
     case "tall":
       return 3;
@@ -59,6 +261,7 @@ export function getLogoSize(mode: LayoutMode) {
   switch (mode) {
     case "micro":
       return 14;
+    case "mini":
     case "strip":
     case "tall":
       return 16;
@@ -66,19 +269,6 @@ export function getLogoSize(mode: LayoutMode) {
       return 22;
     case "showcase":
       return 28;
-  }
-}
-
-export function getTitleSize(mode: LayoutMode) {
-  switch (mode) {
-    case "micro":
-    case "strip":
-    case "tall":
-      return "xs";
-    case "standard":
-      return "sm";
-    case "showcase":
-      return "md";
   }
 }
 
@@ -123,6 +313,128 @@ export function getContentStyle(mode: LayoutMode, theme: HermesTheme) {
     borderRadius: 8,
     boxShadow: `inset 0 0 0 1px ${theme.border}`,
     overflow: "hidden",
-    paddingLeft: 3,
+    ...(mode === "micro" || mode === "mini" || mode === "strip" ? { padding: 3 } : { paddingLeft: 3 }),
   };
+}
+
+function withResponsiveMetrics(
+  width: number,
+  height: number,
+  mode: LayoutMode,
+  typography: HermesTypographyScale,
+): HermesTypographyScale {
+  const columns = getMetricColumns(mode, width);
+  const horizontalPadding = mode === "standard" || mode === "showcase" ? 20 : 6;
+  const cellWidth = Math.max(
+    0,
+    (width - horizontalPadding - getMetricSpacing(mode) * Math.max(0, columns - 1)) / columns,
+  );
+
+  const metricTypography = (() => {
+    switch (mode) {
+      case "micro":
+        return {
+          metricLabel: getFluidValue(height, 100, 170, 8, 11),
+          metricValue: Math.max(getFluidValue(cellWidth, 45, 75, 10, 11), getFluidValue(height, 100, 170, 10, 15)),
+          metricDetail: getFluidValue(height, 100, 170, 8.5, 11),
+        };
+      case "mini":
+        return {
+          metricLabel: Math.max(getFluidValue(cellWidth, 65, 115, 8.5, 10), getFluidValue(height, 100, 170, 8.5, 12)),
+          metricValue: Math.max(getFluidValue(cellWidth, 65, 115, 10.5, 13), getFluidValue(height, 100, 170, 10.5, 17)),
+          metricDetail: Math.max(
+            getFluidValue(cellWidth, 65, 115, 8.5, 10),
+            getFluidValue(height, 100, 170, 8.5, 11.5),
+          ),
+        };
+      case "strip":
+        return {
+          metricLabel: Math.max(getFluidValue(cellWidth, 75, 130, 9, 12.5), getFluidValue(height, 100, 170, 9.5, 13)),
+          metricValue: Math.max(getFluidValue(cellWidth, 75, 130, 12, 16), getFluidValue(height, 100, 170, 13.5, 18)),
+          metricDetail: Math.max(getFluidValue(cellWidth, 75, 130, 9, 11.5), getFluidValue(height, 100, 170, 9, 11.5)),
+        };
+      case "tall":
+        return {
+          metricLabel: getFluidValue(height, 220, 500, 8.5, 12),
+          metricValue: getFluidValue(height, 220, 500, 10.5, 16),
+          metricDetail: getFluidValue(height, 220, 500, 8.5, 11.5),
+        };
+      case "standard":
+        return {
+          metricLabel: getFluidValue(cellWidth, 80, 170, 9, 12),
+          metricValue: getFluidValue(cellWidth, 80, 170, 11.5, 15),
+          metricDetail: getFluidValue(cellWidth, 80, 170, 9, 11.5),
+        };
+      case "showcase":
+        return {
+          metricLabel: getFluidValue(cellWidth, 100, 190, 10.5, 13),
+          metricValue: getFluidValue(cellWidth, 100, 190, 13.5, 16),
+          metricDetail: getFluidValue(cellWidth, 100, 190, 10, 12),
+        };
+    }
+  })();
+
+  const chromeTypography = (() => {
+    switch (mode) {
+      case "micro":
+        return {
+          title: Math.max(typography.title, getFluidValue(height, 100, 170, 10, 13)),
+          status: Math.max(typography.status, getFluidValue(height, 100, 170, 9, 11)),
+        };
+      case "mini":
+        return {
+          title: Math.max(typography.title, getFluidValue(height, 100, 170, 11.5, 15)),
+          status: Math.max(typography.status, getFluidValue(height, 100, 170, 9, 11)),
+        };
+      case "strip":
+        return {
+          title: Math.max(typography.title, getFluidValue(height, 100, 170, 12, 17)),
+          status: Math.max(typography.status, getFluidValue(height, 100, 170, 9, 12)),
+        };
+      case "tall":
+        return {
+          title: Math.max(typography.title, getFluidValue(height, 220, 500, 10.5, 14)),
+          status: Math.max(typography.status, getFluidValue(height, 220, 500, 9, 11)),
+        };
+      case "standard":
+      case "showcase":
+        return {};
+    }
+  })();
+
+  return { ...typography, ...chromeTypography, ...metricTypography };
+}
+
+type FluidTypographyRanges = Record<keyof HermesTypographyScale, readonly [number, number]>;
+
+function createFluidTypography(
+  width: number,
+  minimumWidth: number,
+  maximumWidth: number,
+  ranges: FluidTypographyRanges,
+): HermesTypographyScale {
+  const scale = ([minimum, maximum]: readonly [number, number]) =>
+    getFluidValue(width, minimumWidth, maximumWidth, minimum, maximum);
+
+  return {
+    title: scale(ranges.title),
+    meta: scale(ranges.meta),
+    status: scale(ranges.status),
+    metricLabel: scale(ranges.metricLabel),
+    metricValue: scale(ranges.metricValue),
+    metricDetail: scale(ranges.metricDetail),
+    footer: scale(ranges.footer),
+    badge: scale(ranges.badge),
+  };
+}
+
+function getFluidValue(
+  value: number,
+  minimumValue: number,
+  maximumValue: number,
+  minimumResult: number,
+  maximumResult: number,
+) {
+  const progress = Math.min(1, Math.max(0, (value - minimumValue) / (maximumValue - minimumValue)));
+  return Math.round((minimumResult + (maximumResult - minimumResult) * progress) * 2) / 2;
 }

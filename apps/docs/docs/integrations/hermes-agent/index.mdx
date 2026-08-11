@@ -23,10 +23,10 @@ import { hermesAgentWidget } from "../../widgets/hermes-agent";
 
 The integration supports two Hermes Agent HTTP surfaces:
 
-| Mode                            | Integration URL             | API key  | Available data                                                                                                     |
-| ------------------------------- | --------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
-| **API server (recommended)**    | `http://<hermes-host>:8642` | Required | Health and readiness, version, platforms, agents, sessions, jobs, skills, and toolsets                             |
-| **Web dashboard compatibility** | `http://<hermes-host>:9119` | Not used | Public gateway status; sessions, jobs, skills, and toolsets only when the dashboard session endpoint is accessible |
+| Mode                            | Integration URL             | API key  | Available data                                                                                         |
+| ------------------------------- | --------------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| **API server (recommended)**    | `http://<hermes-host>:8642` | Required | Health and readiness, version, platform states, agents, recent sessions, jobs, skills, and toolsets    |
+| **Web dashboard compatibility** | `http://<hermes-host>:9119` | Not used | Gateway status, checkout update distance, and details available through the dashboard session endpoint |
 
 :::info URL configuration
 Enter the root URL without `/v1`. Homarr adds `/health`, `/v1`, and `/api` endpoint paths automatically. When Homarr runs in a container, `127.0.0.1` refers to that container, not the Hermes Agent host.
@@ -45,17 +45,23 @@ API_SERVER_KEY=<strong-random-key>
 
 Then start or restart the gateway with `hermes gateway`. Use the root URL on port `8642` in Homarr and paste the same `API_SERVER_KEY` into the API Key field.
 
-The API server is the recommended mode because its authenticated read endpoints expose the complete data needed by the widget. See the [Hermes Agent API server documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/api-server/) for the current configuration and endpoint list.
+The API server is the recommended mode because its authenticated read endpoints expose the reliable summary and management metadata used by the widget. The current session endpoint does not expose messaging chat, channel, or topic identifiers. See the [Hermes Agent API server documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/api-server/) for the current configuration and endpoint list.
 
 :::warning Security
 The Hermes Agent API server can access the agent's full toolset, including terminal and file operations. Use a strong key and restrict port `8642` to a trusted network, firewall rule, or VPN. Homarr connects server-to-server, so `API_SERVER_CORS_ORIGINS` is not required.
+:::
+
+:::info Public boards and permissions
+Public boards receive only aggregate Hermes health and count metrics. Session titles, job names and schedules, platform names, and toolset names are returned only to users with direct `use` permission for the integration. Configure an external URL if dashboard links should be visible; Homarr never exposes the internal integration URL as a fallback.
 :::
 
 #### Web dashboard compatibility
 
 For status-only compatibility, use the dashboard root URL on port `9119` and select the credential option without an API key. The dashboard starts on loopback by default; follow the [Hermes Agent web dashboard documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/web-dashboard) before making it reachable from Homarr.
 
-The public `/api/status` endpoint is sufficient for gateway, platform, version, and activity metrics. A dashboard bound to a non-loopback address enables an authentication gate. Homarr does not perform an interactive dashboard login, so protected detail endpoints are shown as unavailable. Use API server mode when you need sessions, jobs, skills, and toolsets reliably.
+The public `/api/status` endpoint is sufficient for gateway, platform, version, and activity metrics. When the dashboard exposes its short-lived session token, Homarr also reads `/api/hermes/update/check`, so its commits-behind count matches the Hermes terminal and System page. Older Hermes versions fall back to comparing published GitHub releases. A dashboard bound to a non-loopback address enables an authentication gate. Homarr does not perform an interactive dashboard login, so protected detail endpoints are shown as unavailable. Use API server mode when you need sessions, jobs, skills, and toolsets reliably.
+
+The integration contract was verified against Hermes Agent `v0.20.0` (`v2026.8.3`). The no-credential option is for dashboard compatibility only; current Hermes API server releases require `API_SERVER_KEY`.
 
 ### Secrets
 

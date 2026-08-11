@@ -12,195 +12,171 @@ import {
   IconWorld,
 } from "@tabler/icons-react";
 
-import type { HermesJob, HermesSession, HermesToolset, HermesPlatformStatus } from "@homarr/integrations/types";
 import { useScopedI18n } from "@homarr/translation/client";
 
-import { getHermesPlatformChannels, getJobKey, getStatusColor, isJobFailed, isJobPaused } from "./utils";
-import { HERMES_CHROME_TEXT_STYLE, HERMES_TECHNICAL_TEXT_STYLE, useHermesTheme } from "./theme";
+import type { DetailsTypographyScale } from "./layout";
+import { getJobDisplayState, getJobSortPriority, getStatusColor } from "./utils";
+import { HERMES_TECHNICAL_TEXT_STYLE, useHermesTheme } from "./theme";
+import type { HermesJobDetail, HermesPlatformDetail, HermesSessionDetail, HermesToolsetDetail } from "./types";
 
-interface PlatformsListProps {
-  platforms: Record<string, HermesPlatformStatus>;
-  sessions: HermesSession[];
-}
-
-export function PlatformsList({ platforms, sessions }: PlatformsListProps) {
+export function PlatformsList({
+  platforms,
+  maxItems,
+  typography,
+}: {
+  platforms: HermesPlatformDetail[];
+  maxItems: number;
+  typography: DetailsTypographyScale;
+}) {
   const t = useScopedI18n("widget.hermesAgent");
   const theme = useHermesTheme();
-  const entries = Object.entries(platforms).toSorted(([nameA], [nameB]) => nameA.localeCompare(nameB));
-  const channels = getHermesPlatformChannels(sessions);
+  const entries = platforms
+    .toSorted((platformA, platformB) => platformA.name.localeCompare(platformB.name))
+    .slice(0, maxItems);
 
-  if (entries.length === 0) return <EmptyText text={t("empty.platforms")} />;
+  if (entries.length === 0) return <EmptyText text={t("empty.platforms")} fontSize={typography.auxiliary} />;
 
   return (
-    <Stack gap={4}>
-      {entries.map(([name, platform]) => {
-        const platformChannels = channels.filter((channel) => channel.platform === name.toLowerCase());
+    <Stack gap={typography.rowGap}>
+      {entries.map((platform) => {
+        const updatedLabel = platform.updatedAt
+          ? t("footer.updated", { when: dayjs(platform.updatedAt).fromNow() })
+          : null;
 
         return (
-          <Stack key={name} gap={3}>
-            <Group justify="space-between" wrap="nowrap" gap={6}>
-              <Group gap={5} wrap="nowrap" miw={0}>
-                <Box
-                  component="span"
-                  w={7}
-                  h={7}
-                  style={{
-                    borderRadius: "50%",
-                    background: `var(--mantine-color-${getStatusColor(platform.state)}-6)`,
-                    flexShrink: 0,
-                  }}
-                  title={platform.state ?? t("unknown")}
-                >
-                  <VisuallyHidden>{platform.state ?? t("unknown")}</VisuallyHidden>
-                </Box>
-                <Text size="xs" fw={600} c={theme.textPrimary} lh={1.25}>
-                  {name}
-                </Text>
-                {platformChannels.length > 0 && (
-                  <Text
-                    size="xs"
-                    fw={700}
-                    c={theme.success}
-                    title={t("platforms.channelCount", { count: platformChannels.length })}
-                    style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap" }}
-                  >
-                    {platformChannels.length}
-                  </Text>
-                )}
-              </Group>
-              {platform.updated_at && (
-                <Text size="xs" c={theme.textTertiary} ta="right" lh={1.25} style={{ whiteSpace: "nowrap" }}>
-                  {dayjs(platform.updated_at).fromNow()}
-                </Text>
-              )}
+          <Group key={platform.name} justify="space-between" wrap="nowrap" gap={4} mih={getRowMinHeight(typography)}>
+            <Group gap={5} wrap="nowrap" miw={0} style={{ flex: "1 1 auto" }}>
+              <Box
+                component="span"
+                w={typography.indicator}
+                h={typography.indicator}
+                style={{
+                  borderRadius: "50%",
+                  background: `var(--mantine-color-${getStatusColor(platform.state)}-6)`,
+                  flexShrink: 0,
+                }}
+                title={platform.state ?? t("unknown")}
+              >
+                <VisuallyHidden>{platform.state ?? t("unknown")}</VisuallyHidden>
+              </Box>
+              <Text
+                fz={typography.item}
+                fw={600}
+                c={theme.textPrimary}
+                lh={1.25}
+                lineClamp={1}
+                title={platform.name}
+                style={{ flex: "1 1 auto", minWidth: 0 }}
+              >
+                {platform.name}
+              </Text>
             </Group>
-            {platformChannels.length > 0 && (
-              <Stack gap={2} ml={12}>
-                {platformChannels.map((channel) => {
-                  const channelName =
-                    channel.displayName ?? maskChannelId(channel.chatId) ?? t("platforms.unknownChannel");
-                  const channelKind = channel.threadId ? `#${channel.threadId}` : channel.chatType?.toUpperCase();
-
-                  return (
-                    <Group key={channel.id} justify="space-between" wrap="nowrap" gap={5} mih={20}>
-                      <Group gap={4} wrap="nowrap" miw={0}>
-                        <Text size="xs" c={theme.textSecondary} lh={1.25} lineClamp={1} title={channelName}>
-                          {channelName}
-                        </Text>
-                        {channelKind && (
-                          <Text
-                            size="xs"
-                            fw={600}
-                            c={theme.textTertiary}
-                            title={
-                              channel.threadId
-                                ? t("platforms.topic", { id: channel.threadId })
-                                : (channel.chatType ?? undefined)
-                            }
-                            style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap" }}
-                          >
-                            {channelKind}
-                          </Text>
-                        )}
-                      </Group>
-                      <Text
-                        size="xs"
-                        c={theme.textTertiary}
-                        title={t("platforms.sessionCount", { count: channel.sessionCount })}
-                        style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap", flexShrink: 0 }}
-                      >
-                        ×{channel.sessionCount}
-                      </Text>
-                    </Group>
-                  );
-                })}
-              </Stack>
+            {updatedLabel && (
+              <Tooltip label={updatedLabel} openDelay={400}>
+                <Box component="span" c={theme.textTertiary} style={{ display: "inline-flex", flexShrink: 0 }}>
+                  <IconClock size={typography.icon} stroke={1.8} aria-hidden="true" />
+                  <VisuallyHidden>{updatedLabel}</VisuallyHidden>
+                </Box>
+              </Tooltip>
             )}
-          </Stack>
+          </Group>
         );
       })}
     </Stack>
   );
 }
 
-const maskChannelId = (chatId: string | null) => {
-  if (!chatId) return null;
-  return chatId.length > 4 ? `••••${chatId.slice(-4)}` : "••••";
-};
-
-interface SessionsListProps {
-  sessions: HermesSession[];
-}
-
-export function SessionsList({ sessions }: SessionsListProps) {
+export function SessionsList({
+  sessions,
+  maxItems,
+  typography,
+}: {
+  sessions: HermesSessionDetail[];
+  maxItems: number;
+  typography: DetailsTypographyScale;
+}) {
   const t = useScopedI18n("widget.hermesAgent");
   const theme = useHermesTheme();
-  const visibleSessions = sessions.slice(0, 15);
+  const visibleSessions = sessions.slice(0, maxItems);
 
-  if (visibleSessions.length === 0) return <EmptyText text={t("empty.sessions")} />;
+  if (visibleSessions.length === 0) return <EmptyText text={t("empty.sessions")} fontSize={typography.auxiliary} />;
 
   return (
-    <Stack gap={3}>
+    <Stack gap={typography.rowGap}>
       {visibleSessions.map((session) => {
         const title = session.title ?? session.id;
 
         return (
-          <Group key={session.id} gap={5} wrap="nowrap" mih={20}>
-            <Text size="xs" fw={500} c={theme.textPrimary} lh={1.3} lineClamp={1} title={title} style={{ flex: 1 }}>
-              {title}
-            </Text>
-            {session.source && <SessionSourceIcon source={session.source} />}
-          </Group>
-        );
-      })}
-    </Stack>
-  );
-}
-
-interface JobsListProps {
-  jobs: HermesJob[];
-}
-
-export function JobsList({ jobs }: JobsListProps) {
-  const t = useScopedI18n("widget.hermesAgent");
-  const theme = useHermesTheme();
-  const visibleJobs = jobs.slice(0, 6);
-
-  if (visibleJobs.length === 0) return <EmptyText text={t("empty.jobs")} />;
-
-  return (
-    <Stack gap={3}>
-      {visibleJobs.map((job, index) => {
-        const isFailed = isJobFailed(job);
-        const isPaused = isJobPaused(job);
-        const name = job.name ?? job.id ?? job.job_id ?? t("jobs.unnamed");
-        const status = isFailed ? t("jobs.failedLabel") : isPaused ? t("jobs.paused") : t("jobs.enabled");
-        const schedule = `${job.schedule ?? t("jobs.noSchedule")}${
-          job.next_run_at ? ` - ${t("jobs.next", { when: dayjs(job.next_run_at).fromNow() })}` : ""
-        }`;
-
-        return (
-          <Group key={getJobKey(job, index)} justify="space-between" wrap="nowrap" gap={5} mih={20}>
+          <Group key={session.id} gap={5} wrap="nowrap" mih={getRowMinHeight(typography)}>
             <Text
-              size="xs"
+              fz={typography.item}
               fw={500}
               c={theme.textPrimary}
               lh={1.3}
               lineClamp={1}
-              title={`${name} · ${schedule}`}
-              style={{ flex: 1 }}
+              title={title}
+              style={{ flex: "1 1 auto", minWidth: 0 }}
+            >
+              {title}
+            </Text>
+            {session.source && <SessionSourceIcon source={session.source} size={typography.icon} />}
+          </Group>
+        );
+      })}
+    </Stack>
+  );
+}
+
+export function JobsList({
+  jobs,
+  maxItems,
+  lineClamp,
+  typography,
+}: {
+  jobs: HermesJobDetail[];
+  maxItems: number;
+  lineClamp: 1 | 2 | 3;
+  typography: DetailsTypographyScale;
+}) {
+  const t = useScopedI18n("widget.hermesAgent");
+  const theme = useHermesTheme();
+  const visibleJobs = jobs
+    .toSorted((jobA, jobB) => getJobSortPriority(jobA) - getJobSortPriority(jobB))
+    .slice(0, maxItems);
+
+  if (visibleJobs.length === 0) return <EmptyText text={t("empty.jobs")} fontSize={typography.auxiliary} />;
+
+  return (
+    <Stack gap={typography.rowGap}>
+      {visibleJobs.map((job) => {
+        const name = job.name ?? t("jobs.unnamed");
+        const displayState = getJobDisplayState(job);
+        const status =
+          displayState === "paused"
+            ? t("jobs.paused")
+            : displayState === "failed"
+              ? t("jobs.failedLabel")
+              : t("jobs.enabled");
+        const color =
+          displayState === "paused" ? theme.warning : displayState === "failed" ? theme.error : theme.success;
+        const schedule = `${job.schedule ?? t("jobs.noSchedule")}${
+          job.nextRunAt ? ` - ${t("jobs.next", { when: dayjs(job.nextRunAt).fromNow() })}` : ""
+        }`;
+        const description = `${name} · ${status} · ${schedule}`;
+
+        return (
+          <Group key={job.id} align="flex-start" wrap="nowrap" mih={getRowMinHeight(typography)} miw={0}>
+            <Text
+              fz={typography.item}
+              fw={600}
+              c={color}
+              lh={lineClamp === 3 ? 1.2 : 1.3}
+              lineClamp={lineClamp}
+              title={description}
+              aria-label={description}
+              style={{ flex: "1 1 auto", minWidth: 0 }}
             >
               {name}
-            </Text>
-            <Text
-              size="xs"
-              fw={700}
-              c={isFailed ? theme.error : isPaused ? theme.warning : theme.success}
-              lh={1.25}
-              title={schedule}
-              style={{ ...HERMES_CHROME_TEXT_STYLE, whiteSpace: "nowrap" }}
-            >
-              {status}
             </Text>
           </Group>
         );
@@ -209,10 +185,10 @@ export function JobsList({ jobs }: JobsListProps) {
   );
 }
 
-function SessionSourceIcon({ source }: { source: string }) {
+function SessionSourceIcon({ source, size }: { source: string; size: number }) {
   const theme = useHermesTheme();
   const normalizedSource = source.toLowerCase();
-  const iconProps = { size: 14, stroke: 1.8, "aria-hidden": true } as const;
+  const iconProps = { size, stroke: 1.8, "aria-hidden": true } as const;
   const sourceIcon = normalizedSource.includes("telegram") ? (
     <IconBrandTelegram {...iconProps} color="#2aabee" />
   ) : normalizedSource.includes("discord") ? (
@@ -243,45 +219,68 @@ function SessionSourceIcon({ source }: { source: string }) {
   );
 }
 
-interface ToolsetsListProps {
-  toolsets: HermesToolset[];
-}
-
-export function ToolsetsList({ toolsets }: ToolsetsListProps) {
+export function ToolsetsList({
+  toolsets,
+  maxItems,
+  typography,
+}: {
+  toolsets: HermesToolsetDetail[];
+  maxItems: number;
+  typography: DetailsTypographyScale;
+}) {
   const t = useScopedI18n("widget.hermesAgent");
   const theme = useHermesTheme();
-  const enabledToolsets = toolsets.filter((toolset) => toolset.enabled === true);
+  const enabledToolsets = toolsets.filter((toolset) => toolset.enabled);
 
-  if (toolsets.length === 0) return <EmptyText text={t("empty.toolsets")} />;
+  if (toolsets.length === 0) return <EmptyText text={t("empty.toolsets")} fontSize={typography.auxiliary} />;
 
   return (
-    <Stack gap={3}>
-      {enabledToolsets.slice(0, 10).map((toolset) => (
-        <Group key={toolset.name} justify="space-between" align="flex-start" wrap="nowrap" gap={5} mih={20}>
-          <Text size="xs" fw={500} c={theme.textPrimary} lh={1.3} lineClamp={2} title={toolset.label ?? toolset.name}>
+    <Stack gap={typography.rowGap}>
+      {enabledToolsets.slice(0, maxItems).map((toolset) => (
+        <Group
+          key={toolset.name}
+          justify="space-between"
+          align="flex-start"
+          wrap="nowrap"
+          gap={5}
+          mih={getRowMinHeight(typography)}
+        >
+          <Text
+            fz={typography.item}
+            fw={500}
+            c={theme.textPrimary}
+            lh={1.3}
+            lineClamp={1}
+            title={toolset.label ?? toolset.name}
+            style={{ flex: "1 1 auto", minWidth: 0 }}
+          >
             {toolset.label ?? toolset.name}
           </Text>
           <Text
-            size="xs"
+            fz={typography.item}
             fw={700}
             c={toolset.configured === false ? theme.warning : theme.success}
-            title={t("toolsets.tools", { count: toolset.tools.length })}
+            title={t("toolsets.tools", { count: toolset.toolCount })}
             style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap", flexShrink: 0 }}
           >
-            {toolset.tools.length}
+            {toolset.toolCount}
           </Text>
         </Group>
       ))}
-      {enabledToolsets.length === 0 && <EmptyText text={t("empty.enabledToolsets")} />}
+      {enabledToolsets.length === 0 && <EmptyText text={t("empty.enabledToolsets")} fontSize={typography.auxiliary} />}
     </Stack>
   );
 }
 
-function EmptyText({ text }: { text: string }) {
+function EmptyText({ text, fontSize }: { text: string; fontSize: number }) {
   const theme = useHermesTheme();
   return (
-    <Text size="xs" c={theme.textTertiary} ta="center" py={4}>
+    <Text fz={fontSize} c={theme.textTertiary} ta="center" py={4}>
       {text}
     </Text>
   );
+}
+
+function getRowMinHeight(typography: DetailsTypographyScale) {
+  return Math.ceil(typography.item * 1.3);
 }

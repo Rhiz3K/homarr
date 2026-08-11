@@ -80,11 +80,14 @@ describe("HermesAgentIntegration", () => {
       id: "backup-job",
       name: "Backup",
       prompt: "run backup with password=secret-value",
+      last_error: "request failed with token=secret-value",
       schedule: "0 3 * * *",
       enabled: true,
     });
 
+    expect(job.has_error).toBe(true);
     expect(job).not.toHaveProperty("prompt");
+    expect(job).not.toHaveProperty("last_error");
   });
 
   test("session data strips previews and usage metadata that may contain sensitive values", () => {
@@ -92,6 +95,9 @@ describe("HermesAgentIntegration", () => {
       id: "session-1",
       source: "telegram",
       title: "Team chat",
+      chat_id: "private-chat-id",
+      thread_id: "private-thread-id",
+      display_name: "Private channel",
       preview: "content of the most recent message",
       user_id: "user-1",
       model: "hermes-agent",
@@ -106,6 +112,9 @@ describe("HermesAgentIntegration", () => {
     expect(session).toMatchObject({ id: "session-1", source: "telegram", title: "Team chat" });
     expect(session).not.toHaveProperty("preview");
     expect(session).not.toHaveProperty("user_id");
+    expect(session).not.toHaveProperty("chat_id");
+    expect(session).not.toHaveProperty("thread_id");
+    expect(session).not.toHaveProperty("display_name");
     expect(session).not.toHaveProperty("input_tokens");
     expect(session).not.toHaveProperty("estimated_cost_usd");
   });
@@ -114,7 +123,7 @@ describe("HermesAgentIntegration", () => {
     const fetchAsync = vi.fn((url: Parameters<IntegrationTestingInput["fetchAsync"]>[0]) => {
       const path = getPathname(url);
       if (path === "/health") {
-        return Promise.resolve(createResponse({ status: "ok" }));
+        return Promise.resolve(createResponse({ status: "ok", platform: "hermes-agent", version: "0.19.0" }));
       }
       if (path === "/v1/capabilities") {
         return Promise.resolve(
@@ -143,30 +152,20 @@ describe("HermesAgentIntegration", () => {
     );
   });
 
-  test("testingAsync supports an API server without an API key", async () => {
+  test("testingAsync rejects a current API server without an API key", async () => {
     const fetchAsync = vi.fn((url: Parameters<IntegrationTestingInput["fetchAsync"]>[0]) => {
       const path = getPathname(url);
       if (path === "/health") {
-        return Promise.resolve(createResponse({ status: "ok" }));
+        return Promise.resolve(createResponse({ status: "ok", platform: "hermes-agent", version: "0.19.0" }));
       }
       if (path === "/v1/capabilities") {
-        return Promise.resolve(
-          createResponse({
-            object: "hermes.api_server.capabilities",
-            platform: "hermes-agent",
-            model: "hermes-agent",
-            auth: { type: "none", required: false },
-            features: { run_status: true },
-          }),
-        );
+        return Promise.resolve(createResponse({ error: "API key required" }, 401));
       }
       return Promise.resolve(createResponse({ error: "Not Found" }, 404));
     }) as IntegrationTestingInput["fetchAsync"];
 
     const integration = createHermesAgentIntegration([]);
-    const result = await integration.callTestingAsync(fetchAsync);
-
-    expect(result.success).toBe(true);
+    await expect(integration.callTestingAsync(fetchAsync)).rejects.toThrow();
     expect(fetchAsync).toHaveBeenCalledTimes(2);
     expect(fetchAsync).toHaveBeenLastCalledWith(
       expect.any(URL),
@@ -247,8 +246,22 @@ describe("HermesAgentIntegration", () => {
     await expect(integration.callTestingAsync(fetchAsync)).rejects.toThrow();
   });
 
+  test("testingAsync rejects a non-Hermes capabilities response", async () => {
+    const fetchAsync = vi.fn((url: Parameters<IntegrationTestingInput["fetchAsync"]>[0]) => {
+      const path = getPathname(url);
+      if (path === "/health") {
+        return Promise.resolve(createResponse({ status: "ok", platform: "hermes-agent", version: "0.19.0" }));
+      }
+      if (path === "/v1/capabilities") return Promise.resolve(createResponse({}));
+      return Promise.resolve(createResponse({ error: "Not Found" }, 404));
+    }) as IntegrationTestingInput["fetchAsync"];
+
+    await expect(createHermesAgentIntegration().callTestingAsync(fetchAsync)).rejects.toThrow();
+  });
+
   test("getOverviewAsync aggregates required and optional endpoint data", async () => {
     setupMockFetch({
+      "/health": { status: "ok", platform: "hermes-agent", version: "0.19.0" },
       "/health/detailed": {
         status: "ready",
         version: "0.18.2",
@@ -270,18 +283,11 @@ describe("HermesAgentIntegration", () => {
         auth: { type: "bearer", required: true },
         features: { run_status: true, jobs_admin: false },
       },
-      "/v1/models": {
-        data: [{ id: "hermes-agent", owned_by: "hermes", created: 1767225600 }],
-      },
       "/api/sessions": {
         data: [
           {
             id: "session-1",
             source: "api_server",
-            chat_id: "channel-1",
-            chat_type: "channel",
-            display_name: "Operations",
-            thread_id: "topic-7",
             title: "Dashboard session",
             message_count: 3,
             tool_call_count: 1,
@@ -323,16 +329,8 @@ describe("HermesAgentIntegration", () => {
     expect(result.health.version).toBe("0.18.2");
     expect(result.health.gateway_busy).toBe(true);
     expect(result.health.readiness?.status).toBe("ready");
-    expect(result.capabilities.model).toBe("hermes-agent");
-    expect(result.models).toHaveLength(1);
     expect(result.sessions).toHaveLength(1);
     expect(result.sessions[0]?.last_active).toBe(1_767_225_600);
-    expect(result.sessions[0]).toMatchObject({
-      chat_id: "channel-1",
-      chat_type: "channel",
-      display_name: "Operations",
-      thread_id: "topic-7",
-    });
     expect(result.jobs).toHaveLength(1);
     expect(result.jobs[0]?.schedule).toBe("0 9 * * *");
     expect(result.toolsets).toHaveLength(1);
@@ -342,6 +340,71 @@ describe("HermesAgentIntegration", () => {
       expect.any(URL),
       expect.objectContaining({
         headers: expect.objectContaining({ Authorization: `Bearer ${TEST_API_KEY}` }),
+      }),
+    );
+  });
+
+  test("getOverviewAsync uses the dashboard updater's exact commits-behind count", async () => {
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const parsedUrl = getRequestUrl(url);
+
+      if (parsedUrl.hostname === "api.github.com") {
+        return Promise.reject(new Error("GitHub fallback should not be used"));
+      }
+
+      if (parsedUrl.pathname === "/api/status") {
+        return Promise.resolve(
+          createResponse({
+            version: "0.20.0",
+            release_date: "2026.8.3",
+            gateway_running: true,
+            gateway_state: "running",
+            gateway_platforms: {},
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/") {
+        return Promise.resolve(
+          new Response('<script>window.__HERMES_SESSION_TOKEN__="test-token";</script>', {
+            headers: { "content-type": "text/html" },
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/hermes/update/check") {
+        return Promise.resolve(
+          createResponse({
+            install_method: "git",
+            current_version: "0.20.0",
+            behind: 76,
+            update_available: true,
+            can_apply: true,
+            update_command: "hermes update",
+            message: null,
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    const result = await createHermesAgentIntegration().getOverviewAsync();
+
+    expect(result.update).toEqual({
+      currentReleaseTag: "v2026.8.3",
+      latestReleaseTag: "upstream main",
+      hasNewRelease: true,
+      commitsBehind: 76,
+      releaseUrl: "https://github.com/NousResearch/hermes-agent/commits/main",
+    });
+    expect(
+      mockFetchWithTrustedCertificates.mock.calls.some(([url]) => getRequestUrl(url).hostname === "api.github.com"),
+    ).toBe(false);
+    expect(mockFetchWithTrustedCertificates).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: "/api/hermes/update/check" }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Hermes-Session-Token": "test-token" }),
       }),
     );
   });
@@ -367,7 +430,7 @@ describe("HermesAgentIntegration", () => {
         if (path === "/repos/NousResearch/hermes-agent/compare/v2099.1.1...v2099.1.1.2") {
           compareCalls += 1;
           return Promise.resolve(
-            createResponse({ ahead_by: 2, total_commits: 2 }) as Awaited<
+            createResponse({ status: "ahead", ahead_by: 2 }) as Awaited<
               ReturnType<typeof fetchWithTrustedCertificatesAsync>
             >,
           );
@@ -453,7 +516,7 @@ describe("HermesAgentIntegration", () => {
 
         compareCalls += 1;
         return Promise.resolve(
-          createResponse({ ahead_by: 0, total_commits: 0 }) as Awaited<
+          createResponse({ status: "identical", ahead_by: 0 }) as Awaited<
             ReturnType<typeof fetchWithTrustedCertificatesAsync>
           >,
         );
@@ -489,8 +552,138 @@ describe("HermesAgentIntegration", () => {
     expect(compareCalls).toBe(0);
   });
 
+  test("getOverviewAsync does not report an update when the local release is newer", async () => {
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const parsedUrl = getRequestUrl(url);
+
+      if (parsedUrl.hostname === "api.github.com") {
+        if (parsedUrl.pathname === "/repos/NousResearch/hermes-agent/releases/latest") {
+          return Promise.resolve(
+            createResponse({
+              tag_name: "v2099.4.1",
+              html_url: "https://github.com/NousResearch/hermes-agent",
+            }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+          );
+        }
+
+        return Promise.resolve(
+          createResponse({ status: "behind", ahead_by: 0 }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+
+      if (parsedUrl.pathname === "/api/status") {
+        return Promise.resolve(
+          createResponse({
+            version: "0.19.0",
+            release_date: "2099.4.2",
+            gateway_running: true,
+            gateway_state: "running",
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    const result = await createHermesAgentIntegration().getOverviewAsync();
+
+    expect(result.update).toMatchObject({
+      currentReleaseTag: "v2099.4.2",
+      latestReleaseTag: "v2099.4.1",
+      hasNewRelease: false,
+      commitsBehind: 0,
+    });
+  });
+
+  test("getOverviewAsync retries a failed GitHub update check instead of caching the rejection", async () => {
+    let latestReleaseCalls = 0;
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const parsedUrl = getRequestUrl(url);
+
+      if (parsedUrl.hostname === "api.github.com") {
+        latestReleaseCalls += 1;
+        if (latestReleaseCalls === 1) return Promise.reject(new Error("Temporary GitHub failure"));
+        return Promise.resolve(
+          createResponse({
+            tag_name: "v2099.5.1",
+            html_url: "https://github.com/NousResearch/hermes-agent",
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+
+      if (parsedUrl.pathname === "/api/status") {
+        return Promise.resolve(
+          createResponse({
+            version: "0.19.0",
+            release_date: "2099.5.1",
+            gateway_running: true,
+            gateway_state: "running",
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    const integration = createHermesAgentIntegration();
+    expect((await integration.getOverviewAsync()).update).toBeNull();
+    expect((await integration.getOverviewAsync()).update).toMatchObject({ hasNewRelease: false });
+    expect(latestReleaseCalls).toBe(2);
+  });
+
+  test("getOverviewAsync does not hide API authentication failures behind dashboard fallback", async () => {
+    const requestedPaths: string[] = [];
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const path = getPathname(url);
+      requestedPaths.push(path);
+
+      if (path === "/health") {
+        return Promise.resolve(
+          createResponse({ status: "ok", platform: "hermes-agent", version: "0.19.0" }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+      if (path === "/health/detailed") {
+        return Promise.resolve(
+          createResponse({ status: "ready", platform: "hermes-agent", active_agents: 0 }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+      if (path === "/v1/capabilities") {
+        return Promise.resolve(
+          createResponse({ error: "Invalid API key" }, 401) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+      if (path === "/api/status") {
+        return Promise.resolve(
+          createResponse({ version: "0.19.0", gateway_running: true }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    await expect(createHermesAgentIntegration().getOverviewAsync()).rejects.toThrow();
+    expect(requestedPaths).not.toContain("/api/status");
+  });
+
   test("getOverviewAsync keeps optional collections empty when optional endpoints are unavailable", async () => {
     setupMockFetch({
+      "/health": { status: "ok", platform: "hermes-agent", version: "0.19.0" },
       "/health/detailed": { status: "ok", gateway_state: "running" },
       "/v1/capabilities": {
         object: "hermes.api_server.capabilities",
@@ -499,7 +692,6 @@ describe("HermesAgentIntegration", () => {
         auth: { type: "bearer", required: true },
         features: {},
       },
-      "/v1/models": { data: [{ id: "hermes-agent" }] },
     });
 
     const integration = createHermesAgentIntegration();

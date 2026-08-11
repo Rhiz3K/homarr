@@ -2553,7 +2553,7 @@
     },
     "hermesAgent": {
       "name": "Hermes Agent",
-      "description": "Responsive Hermes Agent gateway, readiness, activity, capability, and update overview",
+      "description": "Responsive Hermes Agent gateway, activity, automation, and update overview",
       "unknown": "Unknown",
       "unknownShort": "n/a",
       "option": {
@@ -2563,19 +2563,19 @@
         },
         "showPlatforms": {
           "label": "Show platforms",
-          "description": "Show connected messaging platforms in large widget layouts"
+          "description": "Show connected messaging platforms when detail access is allowed"
         },
         "showSessions": {
           "label": "Show recent sessions",
-          "description": "Show recent agent sessions in large widget layouts"
+          "description": "Show recent agent sessions when detail access is allowed"
         },
         "showJobs": {
           "label": "Show scheduled jobs",
-          "description": "Show scheduled and paused jobs in large widget layouts"
+          "description": "Show scheduled and paused jobs when detail access is allowed"
         },
         "showToolsets": {
           "label": "Show toolsets",
-          "description": "Show enabled toolsets in large widget layouts"
+          "description": "Show enabled toolsets when detail access is allowed"
         }
       },
       "meta": {
@@ -2619,13 +2619,8 @@
         "jobs": "No scheduled jobs",
         "toolsets": "No toolsets reported",
         "enabledToolsets": "No enabled toolsets",
-        "unavailable": "This endpoint is not available"
-      },
-      "platforms": {
-        "channelCount": "{count, plural, =1 {# channel} other {# channels}}",
-        "sessionCount": "{count, plural, =1 {# session} other {# sessions}}",
-        "topic": "topic {id}",
-        "unknownChannel": "Unknown channel"
+        "unavailable": "This endpoint is not available",
+        "restricted": "Direct integration permission is required"
       },
       "jobs": {
         "unnamed": "Unnamed job",
@@ -2641,9 +2636,7 @@
         "currentShort": "OK"
       },
       "action": {
-        "openSection": "Open {section} in Hermes Agent",
-        "hideSectionContent": "Blur {section}",
-        "showSectionContent": "Reveal {section}"
+        "openSection": "Open {section} in Hermes Agent"
       },
       "toolsets": { "tools": "{count, plural, =1 {# tool} other {# tools}}" },
       "footer": { "updated": "Updated {when}" },

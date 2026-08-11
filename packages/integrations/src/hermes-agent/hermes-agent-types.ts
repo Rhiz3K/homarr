@@ -10,6 +10,10 @@ export const hermesHealthSchema = z.object({
 
 export type HermesHealth = z.infer<typeof hermesHealthSchema>;
 
+export const hermesApiHealthSchema = hermesHealthSchema.extend({
+  platform: z.literal("hermes-agent"),
+});
+
 export const hermesPlatformStatusSchema = z.object({
   state: z.string().nullish(),
   updated_at: z.string().nullish(),
@@ -37,8 +41,8 @@ export const hermesDetailedHealthSchema = hermesHealthSchema.extend({
 export type HermesDetailedHealth = z.infer<typeof hermesDetailedHealthSchema>;
 
 export const hermesCapabilitiesSchema = z.object({
-  object: z.string().nullish(),
-  platform: z.string().nullish(),
+  object: z.literal("hermes.api_server.capabilities"),
+  platform: z.literal("hermes-agent"),
   model: z.string().nullish(),
   auth: z
     .object({
@@ -93,8 +97,6 @@ export type HermesDashboardStatus = z.infer<typeof hermesDashboardStatusSchema>;
 
 export const hermesSkillSchema = z.object({
   name: z.string(),
-  description: z.string().nullish(),
-  category: z.string().nullish(),
   enabled: z.boolean().nullish(),
 });
 
@@ -104,14 +106,20 @@ export const hermesSkillsResponseSchema = z
   .union([z.array(hermesSkillSchema), z.object({ data: z.array(hermesSkillSchema) })])
   .transform((value) => (Array.isArray(value) ? value : value.data));
 
+export const hermesDashboardUpdateSchema = z.object({
+  current_version: z.string(),
+  behind: z.number().int().nullable(),
+  update_available: z.boolean(),
+});
+
 export const hermesReleaseSchema = z.object({
   tag_name: z.string(),
   html_url: z.string().nullish(),
 });
 
 export const hermesCompareSchema = z.object({
+  status: z.enum(["ahead", "behind", "diverged", "identical"]),
   ahead_by: z.number().nullish(),
-  total_commits: z.number().nullish(),
 });
 
 export interface HermesUpdateStatus {
@@ -122,27 +130,12 @@ export interface HermesUpdateStatus {
   releaseUrl: string | null;
 }
 
-export const hermesModelSchema = z.object({
-  id: z.string(),
-  owned_by: z.string().nullish(),
-  created: z.number().nullish(),
-});
-
-export type HermesModel = z.infer<typeof hermesModelSchema>;
-
-export const hermesModelsResponseSchema = z.object({
-  data: z.array(hermesModelSchema),
-});
-
-// Only the fields the widget renders are parsed; previews, user ids, and
-// usage metrics stay on the server because they can contain sensitive values.
+// Only fields used by the privacy-safe widget projection are parsed. Chat,
+// preview, user, usage, and cost metadata are discarded at the integration
+// boundary because they can contain sensitive values.
 export const hermesSessionSchema = z.object({
   id: z.string(),
   source: z.string().nullish(),
-  chat_id: z.string().nullish(),
-  chat_type: z.string().nullish(),
-  display_name: z.string().nullish(),
-  thread_id: z.string().nullish(),
   title: z.string().nullish(),
   last_active: z.union([z.string(), z.number()]).nullish(),
 });
@@ -178,17 +171,14 @@ export const hermesJobSchema = z
     state: z.string().nullish(),
     last_status: z.string().nullish(),
     next_run_at: z.string().nullish(),
-    last_run_at: z.string().nullish(),
-    last_success_at: z.string().nullish(),
     last_error: z.string().nullish(),
     last_delivery_error: z.string().nullish(),
-    repeat: z.unknown().nullish(),
-    skills: z.array(z.string()).nullish(),
   })
-  .transform(({ schedule, schedule_display, ...job }) => ({
+  .transform(({ schedule, schedule_display, last_error, last_delivery_error, ...job }) => ({
     ...job,
     schedule:
       schedule_display ?? (typeof schedule === "string" ? schedule : (schedule?.display ?? schedule?.expr ?? null)),
+    has_error: Boolean(last_error ?? last_delivery_error),
   }));
 
 export type HermesJob = z.infer<typeof hermesJobSchema>;
@@ -219,8 +209,6 @@ export const hermesToolsetsResponseSchema = z
 export interface HermesAgentOverview {
   mode: "apiServer" | "dashboard";
   health: HermesDetailedHealth;
-  capabilities: HermesCapabilities;
-  models: HermesModel[];
   sessions: HermesSession[];
   jobs: HermesJob[];
   toolsets: HermesToolset[];

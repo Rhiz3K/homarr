@@ -21,22 +21,23 @@ import {
   getCompactVersionValue,
   getContentGap,
   getContentStyle,
+  getDetailsLayout,
   getLayoutMode,
   getLogoSize,
   getMetricColumns,
   getMetricSpacing,
-  getTitleSize,
+  getTypographyScale,
   getVisibleMetricIds,
 } from "./layout";
 import type { MetricDefinition } from "./metric-tile";
 import { MetricTile } from "./metric-tile";
 import type { HermesTheme } from "./theme";
 import { HERMES_BRAND_THEME, HERMES_CHROME_TEXT_STYLE, HERMES_NEUTRAL_THEME, HermesThemeContext } from "./theme";
-import type { HermesAgentInstance } from "./types";
-import { getCompactStatusKey, getHermesGatewayState, getJobSummary, getStatusColor } from "./utils";
+import type { HermesAgentSuccessInstance } from "./types";
+import { getCompactStatusKey, getStatusColor } from "./utils";
 
 interface HermesAgentInstanceCardProps {
-  instance: HermesAgentInstance;
+  instance: HermesAgentSuccessInstance;
   width: number;
   height: number;
   isNarrow: boolean;
@@ -57,36 +58,41 @@ export function HermesAgentInstanceCard({
   const t = useScopedI18n("widget.hermesAgent");
   const theme = options.brandTheme ? HERMES_BRAND_THEME : HERMES_NEUTRAL_THEME;
   const { overview } = instance;
-  const dashboardUrl = instance.integrationUrl.replace(/\/+$/, "");
+  const dashboardUrl = instance.integrationUrl?.replace(/\/+$/, "") ?? null;
   const dashboardRoutes = {
-    config: getDashboardUrl(dashboardUrl, "/config"),
-    cron: getDashboardUrl(dashboardUrl, "/cron"),
-    profiles: getDashboardUrl(dashboardUrl, "/profiles"),
-    sessions: getDashboardUrl(dashboardUrl, "/sessions"),
-    skills: getDashboardUrl(dashboardUrl, "/skills"),
+    config: dashboardUrl ? getDashboardUrl(dashboardUrl, "/config") : null,
+    cron: dashboardUrl ? getDashboardUrl(dashboardUrl, "/cron") : null,
+    profiles: dashboardUrl ? getDashboardUrl(dashboardUrl, "/profiles") : null,
+    sessions: dashboardUrl ? getDashboardUrl(dashboardUrl, "/sessions") : null,
+    skills: dashboardUrl ? getDashboardUrl(dashboardUrl, "/skills") : null,
+    system: dashboardUrl ? getDashboardUrl(dashboardUrl, "/system") : null,
   };
   const getModeRoute = (route: keyof typeof dashboardRoutes) =>
-    overview.mode === "dashboard" ? dashboardRoutes[route] : undefined;
-  const status = overview.dashboardStatus;
-  const gatewayState = getHermesGatewayState(overview);
-  const platformEntries = Object.entries(status?.gateway_platforms ?? overview.health.platforms);
-  const connectedPlatforms = platformEntries.filter(([, platform]) => platform.state === "connected").length;
-  const enabledToolsets = overview.toolsets.filter((toolset) => toolset.enabled === true).length;
-  const enabledSkills = overview.skills.filter((skill) => skill.enabled !== false).length;
-  const activeSessions =
-    status?.active_sessions ?? (overview.dataAvailability.sessions ? overview.sessions.length : null);
-  const jobSummary = getJobSummary(overview.jobs);
-  const version = status?.version ?? overview.health.version ?? t("unknown");
-  const release = status?.release_date ? `v${status.release_date}` : null;
+    overview.mode === "dashboard" ? (dashboardRoutes[route] ?? undefined) : undefined;
+  const gatewayState = overview.gatewayState;
+  const connectedPlatforms = overview.summary.platforms.connected;
+  const enabledToolsets = overview.summary.toolsets.enabled;
+  const enabledSkills = overview.summary.skills.enabled;
+  const activeSessions = overview.summary.activeSessions;
+  const jobSummary = overview.summary.jobs;
+  const version = overview.version ?? t("unknown");
+  const release = overview.release;
   const commitsBehind = overview.update?.commitsBehind;
   const dense = isTiny || isShort;
   const layoutMode = getLayoutMode(width, height);
-  const isMicroMetricMode = layoutMode === "micro" || layoutMode === "strip" || layoutMode === "tall";
-  const compactVersion = isMicroMetricMode || (layoutMode === "standard" && width < 380);
+  const typography = getTypographyScale(width, height, layoutMode);
+  const isMicroMetricMode =
+    layoutMode === "micro" || layoutMode === "mini" || layoutMode === "strip" || layoutMode === "tall";
+  const collapsesMetricValues = layoutMode === "micro" || layoutMode === "mini" || layoutMode === "tall";
+  const isHeightOneCompact = layoutMode === "micro" || layoutMode === "mini";
+  const shouldFillMetricGrid = isHeightOneCompact || layoutMode === "strip" || layoutMode === "tall";
+  const compactVersion = collapsesMetricValues || (layoutMode === "standard" && width < 380);
   const metricColumns = getMetricColumns(layoutMode, width);
-  const iconSize =
-    layoutMode === "micro" ? 7 : isMicroMetricMode ? 8 : dense ? 11 : layoutMode === "showcase" ? 15 : 13;
-  const versionValue = getCompactVersionValue(version, dense || compactVersion, compactVersion);
+  const iconSize = Math.round(
+    typography.metricLabel + (layoutMode === "micro" ? 2 : layoutMode === "showcase" ? 3 : 1),
+  );
+  const versionValue =
+    layoutMode === "strip" ? version : getCompactVersionValue(version, dense || compactVersion, compactVersion);
   const updateColor = !overview.update
     ? theme.textTertiary
     : overview.update.hasNewRelease
@@ -94,23 +100,23 @@ export function HermesAgentInstanceCard({
       : theme.success;
   const jobsColor = jobSummary.total === 0 ? theme.textTertiary : jobSummary.failed > 0 ? theme.error : theme.success;
   const skillsColor = overview.dataAvailability.skills
-    ? getRatioColor(theme, enabledSkills, overview.skills.length)
+    ? getRatioColor(theme, enabledSkills, overview.summary.skills.total)
     : theme.textTertiary;
-  const platformsColor = getRatioColor(theme, connectedPlatforms, platformEntries.length);
+  const platformsColor = getRatioColor(theme, connectedPlatforms, overview.summary.platforms.total);
   const toolsetsColor = overview.dataAvailability.toolsets
-    ? getRatioColor(theme, enabledToolsets, overview.toolsets.length)
+    ? getRatioColor(theme, enabledToolsets, overview.summary.toolsets.total)
     : theme.textTertiary;
-  const activeAgentsColor = getNeutralCountColor(theme, overview.health.active_agents);
+  const activeAgentsColor = getNeutralCountColor(theme, overview.summary.activeAgents);
   const activeSessionsColor = getNeutralCountColor(theme, activeSessions);
   const skillsValue = !overview.dataAvailability.skills
     ? t("unknownShort")
-    : overview.skills.length > 0
-      ? isMicroMetricMode && enabledSkills === overview.skills.length
+    : overview.summary.skills.total > 0
+      ? collapsesMetricValues && enabledSkills === overview.summary.skills.total
         ? enabledSkills
-        : `${enabledSkills}/${overview.skills.length}`
+        : `${enabledSkills}/${overview.summary.skills.total}`
       : "0";
   const toolsetsValue = overview.dataAvailability.toolsets
-    ? `${enabledToolsets}/${overview.toolsets.length}`
+    ? `${enabledToolsets}/${overview.summary.toolsets.total}`
     : t("unknownShort");
   const jobsValue = overview.dataAvailability.jobs ? `${jobSummary.active}/${jobSummary.total}` : t("unknownShort");
   const sessionsValue = activeSessions ?? t("unknownShort");
@@ -127,12 +133,13 @@ export function HermesAgentInstanceCard({
   const compactStatusLabel = compactStatusKey
     ? t(`status.short.${compactStatusKey}`)
     : abbreviateStatus(gatewayState ?? t("unknown"));
-  const statusLabel = isNarrow || layoutMode === "micro" ? compactStatusLabel : verboseStatusLabel;
-  const titleLabel = layoutMode === "micro" || isNarrow ? "H" : instance.integrationName;
-  const showVersion = layoutMode !== "micro" && !isNarrow;
+  const statusLabel =
+    isNarrow || layoutMode === "micro" || layoutMode === "mini" ? compactStatusLabel : verboseStatusLabel;
+  const titleLabel = instance.integrationName;
+  const showVersion = !isHeightOneCompact && !isNarrow && layoutMode !== "strip";
   const showCardShell = layoutMode === "standard" || layoutMode === "showcase";
-  const showDetails = layoutMode === "showcase" && height >= 320;
-  const visibleMetricIds = getVisibleMetricIds(layoutMode);
+  const detailsLayout = getDetailsLayout(width, height, layoutMode);
+  const visibleMetricIds = getVisibleMetricIds(layoutMode, overview.update !== null);
   const metrics: MetricDefinition[] = [
     {
       id: "version",
@@ -141,7 +148,7 @@ export function HermesAgentInstanceCard({
       value: versionValue,
       title: release ? `${version} (${release})` : version,
       color: theme.textPrimary,
-      href: getModeRoute("config"),
+      href: getModeRoute("system"),
     },
     {
       id: "update",
@@ -150,7 +157,7 @@ export function HermesAgentInstanceCard({
       value: updateValue,
       title: overview.update?.latestReleaseTag ?? release ?? undefined,
       color: updateColor,
-      href: overview.update?.releaseUrl ?? getModeRoute("config"),
+      href: getModeRoute("system") ?? overview.update?.releaseUrl ?? undefined,
     },
     {
       id: "jobs",
@@ -169,7 +176,7 @@ export function HermesAgentInstanceCard({
       icon: <IconSparkles size={iconSize} aria-hidden="true" />,
       label: t("summary.skills"),
       value: skillsValue,
-      title: overview.dataAvailability.skills ? `${enabledSkills}/${overview.skills.length}` : t("unknownShort"),
+      title: overview.dataAvailability.skills ? `${enabledSkills}/${overview.summary.skills.total}` : t("unknownShort"),
       color: skillsColor,
       href: getModeRoute("skills"),
     },
@@ -177,7 +184,7 @@ export function HermesAgentInstanceCard({
       id: "platforms",
       icon: <IconPlugConnected size={iconSize} aria-hidden="true" />,
       label: t("summary.platforms"),
-      value: `${connectedPlatforms}/${platformEntries.length}`,
+      value: `${connectedPlatforms}/${overview.summary.platforms.total}`,
       color: platformsColor,
       href: getModeRoute("sessions"),
     },
@@ -193,7 +200,7 @@ export function HermesAgentInstanceCard({
       id: "agents",
       icon: <IconActivity size={iconSize} aria-hidden="true" />,
       label: t("summary.activeAgents"),
-      value: overview.health.active_agents,
+      value: overview.summary.activeAgents,
       color: activeAgentsColor,
       href: getModeRoute("profiles"),
     },
@@ -207,14 +214,33 @@ export function HermesAgentInstanceCard({
     },
   ];
   const visibleMetrics = metrics.filter((metric) => visibleMetricIds.includes(metric.id));
+  const modeBadge = (
+    <Badge
+      size="xs"
+      variant="outline"
+      title={t(`mode.${overview.mode}`)}
+      styles={{
+        root: { color: theme.textSecondary, borderColor: theme.border },
+        label: { ...HERMES_CHROME_TEXT_STYLE, fontSize: typography.badge },
+      }}
+    >
+      {t(`mode.${overview.mode}`)}
+    </Badge>
+  );
 
   const content = (
     <Stack
+      h={showCardShell ? "100%" : height}
       gap={getContentGap(layoutMode)}
-      justify={layoutMode === "showcase" ? "center" : undefined}
-      style={getContentStyle(layoutMode, theme)}
+      style={{ ...getContentStyle(layoutMode, theme), minHeight: 0 }}
     >
-      <Group justify="space-between" wrap="nowrap" gap={dense ? 4 : "xs"}>
+      <Group
+        justify="space-between"
+        wrap="nowrap"
+        gap={dense ? 4 : "xs"}
+        pr={layoutMode === "strip" ? 28 : undefined}
+        style={{ flexShrink: 0 }}
+      >
         <Group gap={isMicroMetricMode ? 4 : "xs"} wrap="nowrap" miw={0}>
           <Avatar
             src={getIconUrl("hermesAgent")}
@@ -224,61 +250,93 @@ export function HermesAgentInstanceCard({
             styles={{ root: { border: `1px solid ${theme.borderStrong}`, background: theme.surface } }}
           />
           <Stack gap={0} miw={0}>
-            {overview.mode === "dashboard" ? (
+            {overview.mode === "dashboard" && dashboardUrl ? (
               <Anchor
                 href={dashboardUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                fz={getTitleSize(layoutMode)}
+                fz={typography.title}
                 fw={700}
                 c={theme.textPrimary}
                 underline="never"
                 lineClamp={1}
                 title={`${instance.integrationName} ${t("meta.version", { version })}`}
+                lh={1.15}
                 style={{ fontFamily: theme.fontSans, textWrap: "balance" }}
               >
                 {titleLabel}
               </Anchor>
             ) : (
               <Text
-                fz={getTitleSize(layoutMode)}
+                fz={typography.title}
                 fw={700}
                 c={theme.textPrimary}
                 lineClamp={1}
                 title={`${instance.integrationName} ${t("meta.version", { version })}`}
+                lh={1.15}
                 style={{ fontFamily: theme.fontSans, textWrap: "balance" }}
               >
                 {titleLabel}
               </Text>
             )}
             {showVersion && (
-              <Text size="xs" c={theme.textSecondary} lineClamp={1}>
+              <Text
+                fz={typography.meta}
+                c={theme.textSecondary}
+                lh={1.2}
+                lineClamp={1}
+                title={t("meta.versionAndMode", { version, mode: t(`mode.${overview.mode}`) })}
+              >
                 {t("meta.versionAndMode", { version, mode: t(`mode.${overview.mode}`) })}
               </Text>
             )}
           </Stack>
         </Group>
-        <Badge
-          variant={isNarrow ? "light" : "dot"}
-          color={getStatusColor(gatewayState)}
-          size={dense ? "xs" : "sm"}
-          maw={isNarrow ? 44 : 110}
-          styles={{
-            root: {
-              background: theme.surfaceRaised,
-              border: `1px solid ${theme.border}`,
-            },
-            label: { color: theme.textPrimary, ...HERMES_CHROME_TEXT_STYLE },
-          }}
-        >
-          {statusLabel}
-        </Badge>
+        {layoutMode === "micro" ? (
+          <Text
+            component="output"
+            aria-label={verboseStatusLabel}
+            title={verboseStatusLabel}
+            c={getStatusColor(gatewayState)}
+            fz={typography.status}
+            lh={1}
+            style={{ flexShrink: 0 }}
+          >
+            ●
+          </Text>
+        ) : (
+          <Badge
+            variant={isNarrow ? "light" : "dot"}
+            color={getStatusColor(gatewayState)}
+            size={dense ? "xs" : "sm"}
+            maw={isNarrow ? 44 : 110}
+            title={verboseStatusLabel}
+            styles={{
+              root: {
+                background: theme.surfaceRaised,
+                border: `1px solid ${theme.border}`,
+              },
+              label: { color: theme.textPrimary, ...HERMES_CHROME_TEXT_STYLE, fontSize: typography.status },
+            }}
+          >
+            {statusLabel}
+          </Badge>
+        )}
       </Group>
 
       <SimpleGrid
         cols={metricColumns}
         spacing={getMetricSpacing(layoutMode)}
         verticalSpacing={getMetricSpacing(layoutMode)}
+        style={
+          shouldFillMetricGrid
+            ? {
+                flex: 1,
+                minHeight: 0,
+                ...(layoutMode === "tall" ? { gridAutoRows: "minmax(0, 1fr)" } : {}),
+              }
+            : undefined
+        }
       >
         {visibleMetrics.map((metric) => (
           <MetricTile
@@ -291,35 +349,37 @@ export function HermesAgentInstanceCard({
             color={metric.color}
             href={metric.href}
             mode={layoutMode}
-            hideDetail={isMicroMetricMode || dense}
+            hideDetail={layoutMode === "strip" ? width < 560 : isMicroMetricMode || dense}
+            typography={typography}
+            tallExpanded={layoutMode === "tall" && height >= 340}
           />
         ))}
       </SimpleGrid>
 
-      {showDetails && (
+      {detailsLayout && (
         <DetailsGrid
           instance={instance}
           options={options}
           routes={dashboardRoutes}
-          linkToDashboard={overview.mode === "dashboard"}
-          columns={width >= 720 ? 4 : 2}
+          linkToDashboard={overview.mode === "dashboard" && dashboardUrl !== null}
+          width={width}
+          columns={detailsLayout.columns}
+          maxSections={detailsLayout.maxSections}
+          itemLimit={detailsLayout.itemLimit}
         />
       )}
 
       {showCardShell && (
-        <Group justify="space-between" gap="xs" wrap="nowrap">
-          <Badge
-            size="xs"
-            variant="outline"
-            styles={{
-              root: { color: theme.textSecondary, borderColor: theme.border },
-              label: HERMES_CHROME_TEXT_STYLE,
-            }}
-          >
-            {t(`mode.${overview.mode}`)}
-          </Badge>
+        <Group mt="auto" justify="space-between" gap="xs" wrap="nowrap">
+          {overview.mode === "dashboard" && dashboardUrl ? (
+            <Anchor href={dashboardUrl} target="_blank" rel="noopener noreferrer" underline="never" lh={1}>
+              {modeBadge}
+            </Anchor>
+          ) : (
+            modeBadge
+          )}
           <Text
-            size="xs"
+            fz={typography.footer}
             c={theme.textTertiary}
             lineClamp={1}
             title={dayjs(instance.updatedAt).format("YYYY-MM-DD HH:mm:ss")}
@@ -335,7 +395,7 @@ export function HermesAgentInstanceCard({
 
   return (
     <HermesThemeContext.Provider value={theme}>
-      <Card withBorder radius="md" p="xs" style={getCardStyle(theme, options.brandTheme)}>
+      <Card h={height} withBorder radius="md" p="xs" style={getCardStyle(theme, options.brandTheme)}>
         {content}
       </Card>
     </HermesThemeContext.Provider>

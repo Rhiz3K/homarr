@@ -4,8 +4,8 @@ import { IconRobot } from "@tabler/icons-react";
 export const hermesAgentWidget: WidgetDefinition = {
   icon: IconRobot,
   name: "Hermes Agent",
-  description: "Responsive Hermes Agent gateway, readiness, activity, capability, and update overview.",
-  path: "../../widgets/hermes-agent",
+  description: "Responsive Hermes Agent gateway, activity, automation, and update overview.",
+  path: "/docs/widgets/hermes-agent",
   configuration: {
     items: [
       {
@@ -16,25 +16,25 @@ export const hermesAgentWidget: WidgetDefinition = {
       },
       {
         name: "Show platforms",
-        description: "Show connected messaging platforms in large widget layouts.",
+        description: "Show connected messaging platforms when detail access is allowed.",
         values: { type: "boolean" },
         defaultValue: "yes",
       },
       {
         name: "Show recent sessions",
-        description: "Show recent agent sessions in large widget layouts.",
+        description: "Show recent agent sessions when detail access is allowed.",
         values: { type: "boolean" },
         defaultValue: "yes",
       },
       {
         name: "Show scheduled jobs",
-        description: "Show scheduled and paused jobs in large widget layouts.",
+        description: "Show scheduled and paused jobs when detail access is allowed.",
         values: { type: "boolean" },
         defaultValue: "yes",
       },
       {
         name: "Show toolsets",
-        description: "Show enabled toolsets in large widget layouts.",
+        description: "Show enabled toolsets when detail access is allowed.",
         values: { type: "boolean" },
         defaultValue: "yes",
       },

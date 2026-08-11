@@ -1,15 +1,3 @@
-import type { HermesAgentOverview, HermesJob, HermesSession } from "@homarr/integrations/types";
-
-export interface HermesPlatformChannel {
-  id: string;
-  platform: string;
-  displayName: string | null;
-  chatId: string | null;
-  chatType: string | null;
-  threadId: string | null;
-  sessionCount: number;
-}
-
 export const getStatusColor = (status: string | null | undefined) => {
   switch (status?.toLowerCase()) {
     case "ok":
@@ -43,7 +31,14 @@ export const getStatusColor = (status: string | null | undefined) => {
   }
 };
 
-const isHealthyStatus = (status: string) => ["connected", "ok", "ready", "running"].includes(status.toLowerCase());
+interface HermesJobState {
+  failed: boolean;
+  paused: boolean;
+}
+
+export const getJobSortPriority = (job: HermesJobState) => (job.failed ? 0 : job.paused ? 1 : 2);
+
+export const getJobDisplayState = (job: HermesJobState) => (job.paused ? "paused" : job.failed ? "failed" : "enabled");
 
 export const getCompactStatusKey = (status: string) => {
   switch (status.toLowerCase()) {
@@ -77,72 +72,4 @@ export const getCompactStatusKey = (status: string) => {
     default:
       return null;
   }
-};
-
-export const getHermesGatewayState = (overview: Pick<HermesAgentOverview, "mode" | "health" | "dashboardStatus">) => {
-  const status = overview.dashboardStatus;
-  if (status?.nous_session_valid === "terminal") return "auth_error";
-
-  const apiReadinessState =
-    overview.mode === "apiServer" ? (overview.health.readiness?.status ?? overview.health.status) : null;
-  if (apiReadinessState && !isHealthyStatus(apiReadinessState)) return apiReadinessState;
-  if (overview.health.gateway_busy) return "busy";
-  if (overview.mode === "apiServer") return apiReadinessState ?? overview.health.gateway_state ?? null;
-
-  return status?.gateway_state ?? overview.health.gateway_state ?? overview.health.status;
-};
-
-export const getJobKey = (job: HermesJob, index: number) => job.id ?? job.job_id ?? job.name ?? `job-${index}`;
-
-export const isJobPaused = (job: HermesJob) =>
-  job.paused === true || job.enabled === false || job.state?.toLowerCase() === "paused";
-
-export const isJobFailed = (job: HermesJob) =>
-  Boolean(job.last_error ?? job.last_delivery_error) ||
-  ["error", "failed"].includes(job.last_status?.toLowerCase() ?? "");
-
-export const getJobSummary = (jobs: HermesJob[]) => {
-  return jobs.reduce(
-    (summary, job) => {
-      const isPaused = isJobPaused(job);
-      const isFailed = isJobFailed(job);
-
-      return {
-        total: summary.total + 1,
-        active: summary.active + (isPaused ? 0 : 1),
-        failed: summary.failed + (isFailed ? 1 : 0),
-        paused: summary.paused + (isPaused ? 1 : 0),
-      };
-    },
-    { total: 0, active: 0, failed: 0, paused: 0 },
-  );
-};
-
-export const getHermesPlatformChannels = (sessions: HermesSession[]) => {
-  const channels = new Map<string, HermesPlatformChannel>();
-
-  for (const session of sessions) {
-    const platform = session.source?.toLowerCase();
-    if (!platform || (!session.chat_id && !session.display_name)) continue;
-
-    const id = `${platform}:${session.chat_id ?? session.display_name}:${session.thread_id ?? "root"}`;
-    const existing = channels.get(id);
-
-    if (existing) {
-      existing.sessionCount += 1;
-      continue;
-    }
-
-    channels.set(id, {
-      id,
-      platform,
-      displayName: session.display_name ?? null,
-      chatId: session.chat_id ?? null,
-      chatType: session.chat_type ?? null,
-      threadId: session.thread_id ?? null,
-      sessionCount: 1,
-    });
-  }
-
-  return [...channels.values()];
 };
