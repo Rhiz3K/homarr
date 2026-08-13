@@ -159,7 +159,7 @@
 </td></tr>
 <tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/hermes-agent" target="_blank" rel="noreferrer noopener">
-  <img src="https://hermes-agent.nousresearch.com/docs/img/logo.png" alt="Hermes Agent" width="90" height="90" />
+  <img src="https://cdn.jsdelivr.net/gh/NousResearch/hermes-agent@v2026.8.3/website/static/img/apple-touch-icon.png" alt="Hermes Agent" width="90" height="90" />
   <br/>
   <p align="center">Hermes<br/>Agent</p>
 </a>
