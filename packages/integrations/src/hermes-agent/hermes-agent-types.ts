@@ -26,6 +26,7 @@ export const hermesDetailedHealthSchema = hermesHealthSchema.extend({
   gateway_state: z.string().nullish(),
   platforms: z.record(z.string(), hermesPlatformStatusSchema).default({}),
   active_agents: z.number().default(0),
+  active_sessions: z.number().nullish(),
   gateway_busy: z.boolean().nullish(),
   gateway_drainable: z.boolean().nullish(),
   readiness: z
@@ -91,6 +92,14 @@ export const hermesDashboardStatusSchema = z.object({
   nous_session_valid: z.string().nullish(),
   auth_required: z.boolean().nullish(),
   auth_providers: z.array(z.string()).default([]),
+  gateways: z
+    .array(
+      z.object({
+        profile: z.string(),
+        served_profiles: z.array(z.string()).nullish(),
+      }),
+    )
+    .nullish(),
 });
 
 export type HermesDashboardStatus = z.infer<typeof hermesDashboardStatusSchema>;
@@ -98,6 +107,8 @@ export type HermesDashboardStatus = z.infer<typeof hermesDashboardStatusSchema>;
 export const hermesSkillSchema = z.object({
   name: z.string(),
   enabled: z.boolean().nullish(),
+  category: z.string().nullish(),
+  usage: z.number().int().nonnegative().nullish(),
 });
 
 export type HermesSkill = z.infer<typeof hermesSkillSchema>;
@@ -130,25 +141,70 @@ export interface HermesUpdateStatus {
   releaseUrl: string | null;
 }
 
-// Only fields used by the privacy-safe widget projection are parsed. Chat,
-// preview, user, usage, and cost metadata are discarded at the integration
-// boundary because they can contain sensitive values.
+// Only fields used by the privacy-safe widget projection are parsed. Session
+// chat, preview, user, token-usage, and cost metadata are discarded at the
+// integration boundary because they can contain sensitive values.
 export const hermesSessionSchema = z.object({
   id: z.string(),
   source: z.string().nullish(),
   title: z.string().nullish(),
+  started_at: z.union([z.string(), z.number()]).nullish(),
   last_active: z.union([z.string(), z.number()]).nullish(),
+  ended_at: z.union([z.string(), z.number()]).nullish(),
+  is_active: z.boolean().nullish(),
 });
 
 export type HermesSession = z.infer<typeof hermesSessionSchema>;
 
+export const parseHermesTimestamp = (value: string | number | null | undefined) => {
+  if (value === null || value === undefined) return null;
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    return value < 10_000_000_000 ? value * 1000 : value;
+  }
+
+  const trimmedValue = value.trim();
+  if (/^\d{9,10}(?:\.\d+)?$|^\d{12,13}$/.test(trimmedValue)) {
+    const numericValue = Number(trimmedValue);
+    return numericValue < 10_000_000_000 ? numericValue * 1000 : numericValue;
+  }
+
+  const parsedValue = Date.parse(trimmedValue);
+  return Number.isNaN(parsedValue) ? null : parsedValue;
+};
+
 export const hermesSessionsResponseSchema = z
   .union([
     z.array(hermesSessionSchema),
-    z.object({ data: z.array(hermesSessionSchema) }),
-    z.object({ sessions: z.array(hermesSessionSchema) }),
+    z.object({
+      data: z.array(hermesSessionSchema),
+      has_more: z.boolean().nullish(),
+      total: z.number().int().nonnegative().nullish(),
+      limit: z.number().int().nonnegative().nullish(),
+      offset: z.number().int().nonnegative().nullish(),
+    }),
+    z.object({
+      sessions: z.array(hermesSessionSchema),
+      has_more: z.boolean().nullish(),
+      total: z.number().int().nonnegative().nullish(),
+      limit: z.number().int().nonnegative().nullish(),
+      offset: z.number().int().nonnegative().nullish(),
+    }),
   ])
-  .transform((value) => (Array.isArray(value) ? value : "sessions" in value ? value.sessions : value.data));
+  .transform((value) => {
+    const items = Array.isArray(value) ? value : "sessions" in value ? value.sessions : value.data;
+    const total = Array.isArray(value) ? null : (value.total ?? null);
+    const offset = Array.isArray(value) ? 0 : (value.offset ?? 0);
+
+    return {
+      items,
+      total,
+      hasMore: Array.isArray(value) ? false : (value.has_more ?? (total !== null && offset + items.length < total)),
+    };
+  });
+
+export type HermesSessionsPage = z.infer<typeof hermesSessionsResponseSchema>;
 
 const hermesJobScheduleSchema = z.union([
   z.string(),
@@ -210,6 +266,8 @@ export interface HermesAgentOverview {
   mode: "apiServer" | "dashboard";
   health: HermesDetailedHealth;
   sessions: HermesSession[];
+  sessionsTotal: number | null;
+  sessionsHasMore: boolean;
   jobs: HermesJob[];
   toolsets: HermesToolset[];
   dashboardStatus: HermesDashboardStatus | null;

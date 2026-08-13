@@ -3,11 +3,22 @@
 import { Request, Response } from "undici";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+vi.hoisted(() => {
+  process.env.SKIP_ENV_VALIDATION = "true";
+  process.env.SECRET_ENCRYPTION_KEY = "ff3f4f7ce30e870c9630de9e5d244ffa81101a24ed0dfe5f064beb53a7e684f1";
+});
+
 import { fetchWithTrustedCertificatesAsync } from "@homarr/core/infrastructure/http";
 
 import type { IntegrationTestingInput } from "../../base/integration";
 import { HermesAgentIntegration } from "../hermes-agent-integration";
-import { hermesJobSchema, hermesSessionSchema } from "../hermes-agent-types";
+import {
+  hermesJobSchema,
+  parseHermesTimestamp,
+  hermesSessionSchema,
+  hermesSessionsResponseSchema,
+  hermesSkillSchema,
+} from "../hermes-agent-types";
 
 vi.mock("@homarr/core/infrastructure/http", () => ({
   fetchWithTrustedCertificatesAsync: vi.fn(),
@@ -90,6 +101,21 @@ describe("HermesAgentIntegration", () => {
     expect(job).not.toHaveProperty("last_error");
   });
 
+  test("skill data keeps usage metadata but strips descriptions and provenance", () => {
+    const skill = hermesSkillSchema.parse({
+      name: "github-pr-workflow",
+      enabled: true,
+      category: "development",
+      usage: 12,
+      description: "Contains internal workflow details",
+      provenance: "/home/user/.hermes/skills/github-pr-workflow",
+    });
+
+    expect(skill).toEqual({ name: "github-pr-workflow", enabled: true, category: "development", usage: 12 });
+    expect(JSON.stringify(skill)).not.toContain("internal workflow");
+    expect(JSON.stringify(skill)).not.toContain("/home/user");
+  });
+
   test("session data strips previews and usage metadata that may contain sensitive values", () => {
     const session = hermesSessionSchema.parse({
       id: "session-1",
@@ -117,6 +143,31 @@ describe("HermesAgentIntegration", () => {
     expect(session).not.toHaveProperty("display_name");
     expect(session).not.toHaveProperty("input_tokens");
     expect(session).not.toHaveProperty("estimated_cost_usd");
+  });
+
+  test("parses API timestamps without treating compact calendar dates as Unix seconds", () => {
+    expect(parseHermesTimestamp("1786422600")).toBe(1_786_422_600_000);
+    expect(parseHermesTimestamp("2026-08-13T09:30:00Z")).toBe(Date.parse("2026-08-13T09:30:00Z"));
+    expect(parseHermesTimestamp("20260813")).toBeNull();
+  });
+
+  test("session pages derive pagination from current Hermes total metadata", () => {
+    const page = hermesSessionsResponseSchema.parse({
+      sessions: [
+        {
+          id: "session-1",
+          last_active: 1_786_422_600,
+          ended_at: null,
+          is_active: true,
+        },
+      ],
+      total: 3,
+      limit: 1,
+      offset: 0,
+    });
+
+    expect(page).toMatchObject({ total: 3, hasMore: true });
+    expect(page.items[0]).toMatchObject({ ended_at: null, is_active: true });
   });
 
   test("testingAsync checks health and authenticated capabilities", async () => {
@@ -296,6 +347,7 @@ describe("HermesAgentIntegration", () => {
             last_active: 1_767_225_600,
           },
         ],
+        has_more: true,
       },
       "/api/jobs": {
         jobs: [
@@ -316,6 +368,8 @@ describe("HermesAgentIntegration", () => {
             name: "github-pr-workflow",
             description: "Review GitHub pull requests",
             category: "development",
+            enabled: true,
+            usage: 12,
           },
         ],
       },
@@ -330,11 +384,19 @@ describe("HermesAgentIntegration", () => {
     expect(result.health.gateway_busy).toBe(true);
     expect(result.health.readiness?.status).toBe("ready");
     expect(result.sessions).toHaveLength(1);
+    expect(result.sessionsTotal).toBeNull();
+    expect(result.sessionsHasMore).toBe(true);
     expect(result.sessions[0]?.last_active).toBe(1_767_225_600);
     expect(result.jobs).toHaveLength(1);
     expect(result.jobs[0]?.schedule).toBe("0 9 * * *");
     expect(result.toolsets).toHaveLength(1);
     expect(result.skills).toHaveLength(1);
+    expect(result.skills[0]).toEqual({
+      name: "github-pr-workflow",
+      enabled: true,
+      category: "development",
+      usage: 12,
+    });
     expect(result.dataAvailability).toEqual({ sessions: true, jobs: true, toolsets: true, skills: true });
     expect(mockFetchWithTrustedCertificates).toHaveBeenCalledWith(
       expect.any(URL),
@@ -342,6 +404,11 @@ describe("HermesAgentIntegration", () => {
         headers: expect.objectContaining({ Authorization: `Bearer ${TEST_API_KEY}` }),
       }),
     );
+    const sessionsUrl = mockFetchWithTrustedCertificates.mock.calls
+      .map(([url]) => getRequestUrl(url))
+      .find((url) => url.pathname === "/api/sessions");
+    expect(sessionsUrl?.searchParams.get("limit")).toBe("100");
+    expect(sessionsUrl?.searchParams.get("order")).toBe("recent");
   });
 
   test("getOverviewAsync uses the dashboard updater's exact commits-behind count", async () => {
@@ -407,6 +474,92 @@ describe("HermesAgentIntegration", () => {
         headers: expect.objectContaining({ "X-Hermes-Session-Token": "test-token" }),
       }),
     );
+  });
+
+  test("getOverviewAsync ignores a negative dashboard commits-behind value", async () => {
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const parsedUrl = getRequestUrl(url);
+
+      if (parsedUrl.pathname === "/api/status") {
+        return Promise.resolve(
+          createResponse({
+            version: "0.20.0",
+            release_date: "2026.8.3",
+            gateway_running: true,
+            gateway_state: "running",
+            gateway_platforms: {},
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/") {
+        return Promise.resolve(
+          new Response('<script>window.__HERMES_SESSION_TOKEN__="test-token";</script>', {
+            headers: { "content-type": "text/html" },
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/hermes/update/check") {
+        return Promise.resolve(
+          createResponse({
+            install_method: "git",
+            current_version: "0.20.0",
+            behind: -3,
+            update_available: true,
+            can_apply: false,
+            update_command: null,
+            message: null,
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    const result = await createHermesAgentIntegration().getOverviewAsync();
+
+    expect(result.update).toMatchObject({ hasNewRelease: false, commitsBehind: null });
+  });
+
+  test("getOverviewAsync honors the dashboard updater flag when the commit count is zero", async () => {
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const parsedUrl = getRequestUrl(url);
+
+      if (parsedUrl.pathname === "/api/status") {
+        return Promise.resolve(
+          createResponse({
+            version: "0.20.0",
+            release_date: "2026.8.3",
+            gateway_running: true,
+            gateway_state: "running",
+            gateway_platforms: {},
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/") {
+        return Promise.resolve(
+          new Response('<script>window.__HERMES_SESSION_TOKEN__="test-token";</script>', {
+            headers: { "content-type": "text/html" },
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/hermes/update/check") {
+        return Promise.resolve(
+          createResponse({ current_version: "0.20.0", behind: 0, update_available: true }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    const result = await createHermesAgentIntegration().getOverviewAsync();
+
+    expect(result.update).toMatchObject({ hasNewRelease: true, commitsBehind: 0 });
   });
 
   test("getOverviewAsync caches dashboard GitHub update checks", async () => {
@@ -495,8 +648,171 @@ describe("HermesAgentIntegration", () => {
     const dashboardSessionsUrl = mockFetchWithTrustedCertificates.mock.calls
       .map(([url]) => getRequestUrl(url))
       .find((url) => url.pathname === "/api/sessions");
-    expect(dashboardSessionsUrl?.searchParams.get("limit")).toBe("50");
+    expect(dashboardSessionsUrl?.searchParams.get("limit")).toBe("100");
     expect(dashboardSessionsUrl?.searchParams.get("order")).toBe("recent");
+  });
+
+  test("getOverviewAsync aggregates activity and sessions across independently running profiles", async () => {
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const parsedUrl = getRequestUrl(url);
+      const profile = parsedUrl.searchParams.get("profile");
+
+      if (parsedUrl.pathname === "/health") {
+        return Promise.resolve(
+          new Response("<!doctype html>", { headers: { "content-type": "text/html" } }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+      if (parsedUrl.pathname === "/") {
+        return Promise.resolve(
+          new Response('<script>window.__HERMES_SESSION_TOKEN__="test-token";</script>', {
+            headers: { "content-type": "text/html" },
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/status") {
+        const activity = profile === "icor-gamedev" ? 1 : 0;
+        return Promise.resolve(
+          createResponse({
+            version: "0.20.0",
+            release_date: "2026.8.3",
+            gateway_running: true,
+            gateway_state: "running",
+            gateway_platforms: {},
+            active_agents: activity,
+            active_sessions: activity,
+            gateway_busy: activity > 0,
+            gateway_mode: "multiple",
+            profiles: ["default", "icor-gamedev"],
+            gateways: [{ profile: "default" }, { profile: "icor-gamedev" }],
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/sessions") {
+        const isActive = profile === "icor-gamedev";
+        return Promise.resolve(
+          createResponse({
+            sessions: [
+              {
+                id: `session-${profile}`,
+                title: profile,
+                last_active: Date.now() / 1000,
+                ended_at: isActive ? null : Date.now() / 1000,
+                is_active: isActive,
+              },
+            ],
+            total: 1,
+            limit: 100,
+            offset: 0,
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/hermes/update/check") {
+        return Promise.resolve(
+          createResponse({ current_version: "0.20.0", behind: 0, update_available: false }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+      if (["/api/skills", "/api/cron/jobs", "/api/tools/toolsets"].includes(parsedUrl.pathname)) {
+        return Promise.resolve(createResponse([]) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>);
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    const result = await createHermesAgentIntegration([]).getOverviewAsync();
+
+    expect(result.health).toMatchObject({ active_agents: 1, active_sessions: 1, gateway_busy: true });
+    expect(result.dashboardStatus).toMatchObject({ active_agents: 1, active_sessions: 1 });
+    expect(result.sessions).toHaveLength(2);
+    expect(result.sessionsTotal).toBe(2);
+    expect(result.sessions.some((session) => session.is_active)).toBe(true);
+    const sessionProfiles = mockFetchWithTrustedCertificates.mock.calls
+      .map(([url]) => getRequestUrl(url))
+      .filter((url) => url.pathname === "/api/sessions")
+      .map((url) => url.searchParams.get("profile"));
+    expect(sessionProfiles).toEqual(expect.arrayContaining(["default", "icor-gamedev"]));
+  });
+
+  test("getOverviewAsync marks merged sessions incomplete when one profile request fails", async () => {
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const parsedUrl = getRequestUrl(url);
+      const profile = parsedUrl.searchParams.get("profile");
+
+      if (parsedUrl.pathname === "/health") {
+        return Promise.resolve(
+          new Response("<!doctype html>", { headers: { "content-type": "text/html" } }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+      if (parsedUrl.pathname === "/") {
+        return Promise.resolve(
+          new Response('<script>window.__HERMES_SESSION_TOKEN__="test-token";</script>', {
+            headers: { "content-type": "text/html" },
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/status") {
+        return Promise.resolve(
+          createResponse({
+            version: "0.20.0",
+            release_date: "2026.8.3",
+            gateway_running: true,
+            gateway_state: "running",
+            gateway_platforms: {},
+            active_agents: profile === "default" ? 1 : 0,
+            active_sessions: profile === "default" ? 1 : 0,
+            gateway_mode: "multiple",
+            profiles: ["default", "offline"],
+            gateways: [{ profile: "default" }, { profile: "offline" }],
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/sessions") {
+        if (profile === "offline") {
+          return Promise.resolve(
+            createResponse({ error: "Gateway unavailable" }, 503) as Awaited<
+              ReturnType<typeof fetchWithTrustedCertificatesAsync>
+            >,
+          );
+        }
+
+        return Promise.resolve(
+          createResponse({
+            sessions: [{ id: "session-default", last_active: Date.now() / 1000 }],
+            total: 1,
+            limit: 100,
+            offset: 0,
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/hermes/update/check") {
+        return Promise.resolve(
+          createResponse({ current_version: "0.20.0", behind: 0, update_available: false }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+      if (["/api/skills", "/api/cron/jobs", "/api/tools/toolsets"].includes(parsedUrl.pathname)) {
+        return Promise.resolve(createResponse([]) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>);
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    const result = await createHermesAgentIntegration([]).getOverviewAsync();
+
+    expect(result.sessions).toHaveLength(1);
+    expect(result.sessionsTotal).toBeNull();
+    expect(result.sessionsHasMore).toBe(true);
+    expect(result.dataAvailability.sessions).toBe(true);
   });
 
   test("getOverviewAsync reports an up-to-date release without comparing commits", async () => {
@@ -698,6 +1014,7 @@ describe("HermesAgentIntegration", () => {
     const result = await integration.getOverviewAsync();
 
     expect(result.sessions).toEqual([]);
+    expect(result.sessionsTotal).toBeNull();
     expect(result.jobs).toEqual([]);
     expect(result.toolsets).toEqual([]);
     expect(result.skills).toEqual([]);

@@ -8,6 +8,7 @@ import { useScopedI18n } from "@homarr/translation/client";
 import type { WidgetComponentProps } from "../definition";
 import { NoIntegrationDataError } from "../errors/no-data-integration";
 import { HermesAgentInstanceCard } from "./instance-card";
+import { getLayoutMode } from "./layout";
 import type { HermesAgentSuccessInstance } from "./types";
 
 export default function HermesAgentWidget({
@@ -44,13 +45,14 @@ function HermesAgentContent({ options, integrationIds, width, height, isEditMode
   const t = useScopedI18n("widget.hermesAgent");
   const [instances] = clientApi.widget.hermesAgent.getOverviews.useSuspenseQuery(
     { integrationIds },
-    { refetchInterval: isEditMode ? false : 30_000 },
+    isEditMode ? { refetchInterval: false } : {},
   );
 
-  const isNarrow = width < 180;
-  const isTinyWidth = isNarrow || width < 280;
-  const gap = isTinyWidth ? 4 : 8;
-  const padding = height < 170 ? 2 : isTinyWidth ? 4 : 8;
+  const estimatedCardHeight = Math.floor(height / Math.max(1, instances.length));
+  const layoutMode = getLayoutMode(width, estimatedCardHeight);
+  const isCompactLayout = ["micro", "mini", "strip", "tall"].includes(layoutMode);
+  const gap = isCompactLayout ? 4 : 8;
+  const padding = layoutMode === "strip" ? 2 : isCompactLayout ? 4 : 8;
   const availableHeight = height - padding * 2 - gap * Math.max(0, instances.length - 1);
   const cardHeight = Math.max(0, Math.floor(availableHeight / Math.max(1, instances.length)));
 
@@ -69,8 +71,6 @@ function HermesAgentContent({ options, integrationIds, width, height, isEditMode
           );
         }
 
-        const isShort = cardHeight < 170;
-        const isTiny = isTinyWidth || isShort;
         const successInstance = {
           ...instance,
           overview: instance.overview,
@@ -84,9 +84,6 @@ function HermesAgentContent({ options, integrationIds, width, height, isEditMode
             instance={successInstance}
             width={width}
             height={cardHeight}
-            isNarrow={isNarrow}
-            isShort={isShort}
-            isTiny={isTiny}
             options={options}
           />
         );

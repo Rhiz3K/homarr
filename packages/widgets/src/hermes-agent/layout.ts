@@ -8,11 +8,6 @@ export interface DetailsLayout {
   itemLimit: number;
 }
 
-export interface JobListLayout {
-  lineClamp: 1 | 2 | 3;
-  maxItems: number;
-}
-
 export interface HermesTypographyScale {
   title: number;
   meta: number;
@@ -34,15 +29,34 @@ export interface DetailsTypographyScale {
   rowGap: number;
 }
 
+export const DETAILS_SECTION_GAP = 10;
+
+export function scaleHermesTypography(typography: HermesTypographyScale, scale: number): HermesTypographyScale {
+  if (scale === 1) return typography;
+
+  const scaled = (value: number) => Math.round(value * scale * 10) / 10;
+
+  return {
+    title: scaled(typography.title),
+    meta: scaled(typography.meta),
+    status: scaled(typography.status),
+    metricLabel: scaled(typography.metricLabel),
+    metricValue: scaled(typography.metricValue),
+    metricDetail: scaled(typography.metricDetail),
+    footer: scaled(typography.footer),
+    badge: scaled(typography.badge),
+  };
+}
+
 export function getLayoutMode(width: number, height: number): LayoutMode {
   const aspectRatio = width / Math.max(height, 1);
 
   if (height < 190) {
     if (aspectRatio < 1.45) return "micro";
     if (aspectRatio < 2.65) return "mini";
+    return "strip";
   }
 
-  if (height < 170) return "strip";
   // A logical W1 tile can be wider than 150px on a large board. Preserve its
   // square and portrait layouts until the container is wide enough for W2.
   if (width < 220) {
@@ -62,32 +76,31 @@ export function getDetailsLayout(
 
   const availableHeight = height - (mode === "showcase" ? 198 : 170);
   const columns = width >= 720 ? 4 : width >= 380 ? 2 : 1;
-  const sectionGap = 8;
   const minimumSectionHeight = 112;
-  const availableGridRows = Math.floor((availableHeight + sectionGap) / (minimumSectionHeight + sectionGap));
+  const availableGridRows = Math.floor(
+    (availableHeight + DETAILS_SECTION_GAP) / (minimumSectionHeight + DETAILS_SECTION_GAP),
+  );
   if (availableGridRows < 1) return null;
 
   const maxSections = Math.min(4, columns * availableGridRows);
   const renderedGridRows = Math.ceil(maxSections / columns);
   const sectionHeight = Math.floor(
-    (availableHeight - sectionGap * Math.max(0, renderedGridRows - 1)) / renderedGridRows,
+    (availableHeight - DETAILS_SECTION_GAP * Math.max(0, renderedGridRows - 1)) / renderedGridRows,
   );
-  const itemLimit = Math.max(1, Math.floor((sectionHeight - 53) / 23));
+  const typography = getDetailsTypography(width, columns);
+  const itemLimit = getDetailItemLimit(sectionHeight, typography);
 
   return { columns, maxSections, itemLimit };
 }
 
-export function getJobListLayout(width: number, columns: number, itemLimit: number): JobListLayout {
-  const approximatePanelWidth = getDetailsTypography(width, columns).panelWidth;
-  if (approximatePanelWidth >= 280) return { lineClamp: 1, maxItems: itemLimit };
+export function getDetailItemLimit(sectionHeight: number, typography: DetailsTypographyScale) {
+  // Paper border + padding, the heading row, and the divider with its margins.
+  // The external-link icon gives narrow headings a 16px minimum line box.
+  const panelChromeHeight = 18 + Math.max(Math.ceil(typography.heading * 1.2), typography.icon + 4) + 9;
+  const rowHeight = Math.ceil(typography.item * 1.3);
+  const listHeight = Math.max(0, sectionHeight - panelChromeHeight);
 
-  const singleLineRowHeight = 23;
-  const availableListHeight = itemLimit * singleLineRowHeight;
-  const lineClamp = approximatePanelWidth < 220 ? 3 : 2;
-  const rowHeight = lineClamp === 3 ? 47 : 35;
-  const maxItems = Math.max(1, Math.floor((availableListHeight + 3) / rowHeight));
-
-  return { lineClamp, maxItems };
+  return Math.max(1, Math.floor((listHeight + typography.rowGap) / (rowHeight + typography.rowGap)));
 }
 
 export function getTypographyScale(
@@ -288,31 +301,45 @@ export function getCompactVersionValue(version: string, isDense: boolean, isMicr
 }
 
 export function getCardStyle(theme: HermesTheme, brandTheme: boolean) {
+  const baseStyle = {
+    "--hermes-agent-font-sans": theme.fontSans,
+    "--hermes-agent-font-mono": theme.fontMono,
+    fontFamily: theme.fontSans,
+    overflow: "hidden",
+  };
+
   if (!brandTheme) {
-    return { overflow: "hidden" };
+    return baseStyle;
   }
 
   return {
+    ...baseStyle,
     background: `radial-gradient(circle at top right, ${theme.glow}, transparent 42%), ${theme.background}`,
     border: `1px solid ${theme.borderStrong}`,
-    boxShadow: `inset 0 1px 0 ${theme.border}, 0 0 20px rgba(4, 28, 28, 0.2)`,
+    borderRadius: theme.radius,
+    boxShadow: `inset 0 1px 0 ${theme.border}, 0 0 20px ${theme.glow}`,
     color: theme.textPrimary,
-    fontFamily: theme.fontSans,
-    overflow: "hidden",
   };
 }
 
 export function getContentStyle(mode: LayoutMode, theme: HermesTheme) {
+  const baseStyle = {
+    "--hermes-agent-font-sans": theme.fontSans,
+    "--hermes-agent-font-mono": theme.fontMono,
+    fontFamily: theme.fontSans,
+    overflow: "hidden",
+  };
+
   if (mode === "standard" || mode === "showcase") {
-    return { overflow: "hidden" };
+    return baseStyle;
   }
 
   return {
+    ...baseStyle,
     background: theme.surface,
     borderLeft: `2px solid ${theme.borderStrong}`,
-    borderRadius: 8,
+    borderRadius: theme.radius,
     boxShadow: `inset 0 0 0 1px ${theme.border}`,
-    overflow: "hidden",
     ...(mode === "micro" || mode === "mini" || mode === "strip" ? { padding: 3 } : { paddingLeft: 3 }),
   };
 }

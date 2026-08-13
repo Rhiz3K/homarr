@@ -9,10 +9,53 @@ export const hermesAgentWidget: WidgetDefinition = {
   configuration: {
     items: [
       {
-        name: "Hermes brand theme",
-        description: "Use the Hermes teal appearance instead of following the board theme.",
+        name: "Hermes theme colors",
+        description: "Use a Hermes dashboard color theme instead of following the Homarr board theme.",
         values: { type: "boolean" },
         defaultValue: "yes",
+      },
+      {
+        name: "Hermes theme",
+        description: "Choose one of the built-in Hermes dashboard themes.",
+        values: {
+          type: "select",
+          options: [
+            "Hermes Teal",
+            "Hermes Teal (Large)",
+            "Nous Blue",
+            "Midnight",
+            "Ember",
+            "Mono",
+            "Cyberpunk",
+            "Rosé",
+          ],
+        },
+        defaultValue: "Hermes Teal",
+      },
+      {
+        name: "Font",
+        description: "Use the theme default or override it with a font from the Hermes dashboard catalog.",
+        values: {
+          type: "select",
+          options: [
+            "Theme default",
+            "System Sans",
+            "System Serif",
+            "System Mono",
+            "Inter",
+            "IBM Plex Sans",
+            "Work Sans",
+            "Atkinson Hyperlegible",
+            "DM Sans",
+            "Spectral",
+            "Fraunces",
+            "Source Serif 4",
+            "JetBrains Mono",
+            "IBM Plex Mono",
+            "Space Mono",
+          ],
+        },
+        defaultValue: "Theme default",
       },
       {
         name: "Show platforms",
@@ -33,8 +76,8 @@ export const hermesAgentWidget: WidgetDefinition = {
         defaultValue: "yes",
       },
       {
-        name: "Show toolsets",
-        description: "Show enabled toolsets when detail access is allowed.",
+        name: "Show skills",
+        description: "Show enabled skills ordered by Hermes usage when detail access is allowed.",
         values: { type: "boolean" },
         defaultValue: "yes",
       },

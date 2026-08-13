@@ -58,7 +58,7 @@ export function MetricTile({
         style={{
           background: theme.surface,
           border: `1px solid ${theme.border}`,
-          borderRadius: 8,
+          borderRadius: theme.radius,
           overflow: "hidden",
         }}
       >
@@ -68,7 +68,7 @@ export function MetricTile({
             lh={1.1}
             c={theme.textSecondary}
             lineClamp={1}
-            title={label}
+            title={valueTitle}
             style={{ ...HERMES_CHROME_TEXT_STYLE, letterSpacing: "0.02em", minWidth: 0 }}
           >
             {label}
@@ -79,7 +79,7 @@ export function MetricTile({
             lh={1.1}
             c={theme.textPrimary}
             lineClamp={1}
-            title={label}
+            title={valueTitle}
             style={{ ...HERMES_CHROME_TEXT_STYLE, letterSpacing: "0.02em", minWidth: 0 }}
           >
             {label}
@@ -114,7 +114,7 @@ export function MetricTile({
         lh={tallExpanded ? 1.1 : 1}
         c={theme.textSecondary}
         lineClamp={1}
-        title={label}
+        title={valueTitle}
         style={{ ...HERMES_CHROME_TEXT_STYLE, letterSpacing: "0.02em", minWidth: 0 }}
       >
         {label}
@@ -126,7 +126,7 @@ export function MetricTile({
     const tileStyle = {
       background: theme.surface,
       border: `1px solid ${theme.border}`,
-      borderRadius: 8,
+      borderRadius: theme.radius,
       overflow: "hidden",
     } as const;
     const tile = (
@@ -172,7 +172,7 @@ export function MetricTile({
         style={{
           background: theme.surface,
           border: `1px solid ${theme.border}`,
-          borderRadius: 8,
+          borderRadius: theme.radius,
           overflow: "hidden",
         }}
       >
@@ -181,7 +181,7 @@ export function MetricTile({
           lh={1.1}
           c={theme.textSecondary}
           lineClamp={1}
-          title={label}
+          title={valueTitle}
           style={{ ...HERMES_CHROME_TEXT_STYLE, letterSpacing: "0.04em", minWidth: 0 }}
         >
           {label}
@@ -225,7 +225,7 @@ export function MetricTile({
         style={{
           background: theme.surface,
           border: `1px solid ${theme.border}`,
-          borderRadius: 8,
+          borderRadius: theme.radius,
           overflow: "hidden",
         }}
       >
@@ -251,7 +251,7 @@ export function MetricTile({
       style={{
         border: `1px solid ${theme.border}`,
         background: theme.surface,
-        borderRadius: 8,
+        borderRadius: theme.radius,
         overflow: "hidden",
       }}
     >
@@ -263,7 +263,7 @@ export function MetricTile({
           fz={typography.metricLabel}
           c={theme.textPrimary}
           lineClamp={1}
-          title={label}
+          title={valueTitle}
           style={{ ...HERMES_CHROME_TEXT_STYLE, letterSpacing: "0.04em", minWidth: 0 }}
         >
           {label}

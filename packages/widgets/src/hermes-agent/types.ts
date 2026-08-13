@@ -11,4 +11,4 @@ export type HermesAgentDetails = NonNullable<HermesAgentWidgetOverview["details"
 export type HermesPlatformDetail = HermesAgentDetails["platforms"][number];
 export type HermesSessionDetail = HermesAgentDetails["sessions"][number];
 export type HermesJobDetail = HermesAgentDetails["jobs"][number];
-export type HermesToolsetDetail = HermesAgentDetails["toolsets"][number];
+export type HermesSkillDetail = HermesAgentDetails["skills"][number];

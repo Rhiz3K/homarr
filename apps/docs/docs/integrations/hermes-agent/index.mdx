@@ -52,14 +52,14 @@ The Hermes Agent API server can access the agent's full toolset, including termi
 :::
 
 :::info Public boards and permissions
-Public boards receive only aggregate Hermes health and count metrics. Session titles, job names and schedules, platform names, and toolset names are returned only to users with direct `use` permission for the integration. Configure an external URL if dashboard links should be visible; Homarr never exposes the internal integration URL as a fallback.
+Public boards receive only aggregate Hermes health and count metrics. Session titles, job names and schedules, platform names, and skill names, categories, and usage counts are returned only to users with direct `use` permission for the integration. Skill descriptions and provenance are discarded at the integration boundary. Configure an external URL if dashboard links should be visible; Homarr never exposes the internal integration URL as a fallback.
 :::
 
 #### Web dashboard compatibility
 
 For status-only compatibility, use the dashboard root URL on port `9119` and select the credential option without an API key. The dashboard starts on loopback by default; follow the [Hermes Agent web dashboard documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/web-dashboard) before making it reachable from Homarr.
 
-The public `/api/status` endpoint is sufficient for gateway, platform, version, and activity metrics. When the dashboard exposes its short-lived session token, Homarr also reads `/api/hermes/update/check`, so its commits-behind count matches the Hermes terminal and System page. Older Hermes versions fall back to comparing published GitHub releases. A dashboard bound to a non-loopback address enables an authentication gate. Homarr does not perform an interactive dashboard login, so protected detail endpoints are shown as unavailable. Use API server mode when you need sessions, jobs, skills, and toolsets reliably.
+The public `/api/status` endpoint is sufficient for gateway, platform, version, and activity metrics. When the dashboard exposes its short-lived session token, Homarr also reads `/api/hermes/update/check`, so its commits-behind count matches the Hermes terminal and System page. It also discovers independently running profile gateways, aggregates their current activity counters, and merges their recent sessions for the `active/24h` widget metric. Older Hermes versions fall back to comparing published GitHub releases. A dashboard bound to a non-loopback address enables an authentication gate. Homarr does not perform an interactive dashboard login, so protected detail endpoints are shown as unavailable. Use API server mode when you need sessions, jobs, skills, and toolsets reliably.
 
 The integration contract was verified against Hermes Agent `v0.20.0` (`v2026.8.3`). The no-credential option is for dashboard compatibility only; current Hermes API server releases require `API_SERVER_KEY`.
 

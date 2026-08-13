@@ -1,18 +1,16 @@
 import { Anchor, Divider, Group, Paper, SimpleGrid, Text } from "@mantine/core";
+import { useElementSize } from "@mantine/hooks";
 import { IconExternalLink } from "@tabler/icons-react";
 
 import { useScopedI18n } from "@homarr/translation/client";
 
 import type { WidgetComponentProps } from "../definition";
-import { getDetailsTypography, getJobListLayout } from "./layout";
-import { JobsList, PlatformsList, SessionsList, ToolsetsList } from "./lists";
+import { DETAILS_SECTION_GAP, getDetailItemLimit, getDetailsTypography } from "./layout";
+import { JobsList, PlatformsList, SessionsList, SkillsList } from "./lists";
 import { HERMES_CHROME_TEXT_STYLE, useHermesTheme } from "./theme";
 import type { HermesAgentSuccessInstance } from "./types";
 
-export type HermesDashboardRoutes = Record<
-  "config" | "cron" | "profiles" | "sessions" | "skills" | "system",
-  string | null
->;
+export type HermesDashboardRoutes = Record<"cron" | "profiles" | "sessions" | "skills" | "system", string | null>;
 
 interface DetailsGridProps {
   instance: HermesAgentSuccessInstance;
@@ -37,6 +35,7 @@ export function DetailsGrid({
 }: DetailsGridProps) {
   const t = useScopedI18n("widget.hermesAgent");
   const theme = useHermesTheme();
+  const { ref: detailsGridRef, height: detailsGridHeight } = useElementSize<HTMLDivElement>();
   const { overview } = instance;
   const details = overview.details;
   const enabledSectionCount = [
@@ -47,8 +46,18 @@ export function DetailsGrid({
   ].filter(Boolean).length;
   const detailColumns = Math.max(1, Math.min(columns, maxSections, enabledSectionCount));
   const typography = getDetailsTypography(width, detailColumns);
+  const visibleSectionCount = Math.min(maxSections, enabledSectionCount);
+  const measuredColumns = Math.max(1, Math.min(columns, visibleSectionCount));
+  const measuredGridRows = Math.max(1, Math.ceil(visibleSectionCount / measuredColumns));
+  const measuredSectionHeight =
+    detailsGridHeight > 0
+      ? (detailsGridHeight - DETAILS_SECTION_GAP * Math.max(0, measuredGridRows - 1)) / measuredGridRows
+      : null;
+  const responsiveItemLimit =
+    measuredSectionHeight === null
+      ? itemLimit
+      : Math.min(itemLimit, getDetailItemLimit(measuredSectionHeight, typography));
   const restrictedContent = <RestrictedText fontSize={typography.auxiliary} />;
-  const jobListLayout = getJobListLayout(width, detailColumns, itemLimit);
   const sections = [
     options.showPlatforms
       ? {
@@ -58,7 +67,11 @@ export function DetailsGrid({
           content: overview.detailsRestricted ? (
             restrictedContent
           ) : (
-            <PlatformsList platforms={details?.platforms ?? []} maxItems={itemLimit} typography={typography} />
+            <PlatformsList
+              platforms={details?.platforms ?? []}
+              maxItems={responsiveItemLimit}
+              typography={typography}
+            />
           ),
         }
       : null,
@@ -70,7 +83,13 @@ export function DetailsGrid({
           content: overview.detailsRestricted ? (
             restrictedContent
           ) : overview.dataAvailability.sessions ? (
-            <SessionsList sessions={details?.sessions ?? []} maxItems={itemLimit} typography={typography} />
+            <SessionsList
+              sessions={details?.sessions ?? []}
+              totalItems={overview.summary.sessions}
+              hasMore={overview.summary.sessionsHasMore}
+              maxItems={responsiveItemLimit}
+              typography={typography}
+            />
           ) : (
             <UnavailableText fontSize={typography.auxiliary} />
           ),
@@ -84,12 +103,7 @@ export function DetailsGrid({
           content: overview.detailsRestricted ? (
             restrictedContent
           ) : overview.dataAvailability.jobs ? (
-            <JobsList
-              jobs={details?.jobs ?? []}
-              maxItems={jobListLayout.maxItems}
-              lineClamp={jobListLayout.lineClamp}
-              typography={typography}
-            />
+            <JobsList jobs={details?.jobs ?? []} maxItems={responsiveItemLimit} typography={typography} />
           ) : (
             <UnavailableText fontSize={typography.auxiliary} />
           ),
@@ -97,13 +111,13 @@ export function DetailsGrid({
       : null,
     options.showToolsets
       ? {
-          id: "toolsets",
-          label: t("sections.toolsets"),
+          id: "skills",
+          label: t("sections.skills"),
           href: routes.skills,
           content: overview.detailsRestricted ? (
             restrictedContent
-          ) : overview.dataAvailability.toolsets ? (
-            <ToolsetsList toolsets={details?.toolsets ?? []} maxItems={itemLimit} typography={typography} />
+          ) : overview.dataAvailability.skills ? (
+            <SkillsList skills={details?.skills ?? []} maxItems={responsiveItemLimit} typography={typography} />
           ) : (
             <UnavailableText fontSize={typography.auxiliary} />
           ),
@@ -113,7 +127,7 @@ export function DetailsGrid({
 
   if (sections.length === 0) return null;
 
-  const sectionPriority = ["sessions", "jobs", "platforms", "toolsets"];
+  const sectionPriority = ["sessions", "jobs", "skills", "platforms"];
   const visibleSections =
     maxSections >= sections.length
       ? sections
@@ -125,9 +139,10 @@ export function DetailsGrid({
 
   return (
     <SimpleGrid
+      ref={detailsGridRef}
       cols={visibleColumns}
-      spacing="xs"
-      verticalSpacing="xs"
+      spacing={DETAILS_SECTION_GAP}
+      verticalSpacing={DETAILS_SECTION_GAP}
       style={{
         flex: "1 1 0",
         minHeight: 0,
@@ -143,7 +158,12 @@ export function DetailsGrid({
             p={8}
             h="100%"
             miw={0}
-            style={{ background: theme.surface, borderColor: theme.border, overflow: "hidden" }}
+            style={{
+              background: theme.surface,
+              borderColor: theme.border,
+              borderRadius: theme.radius,
+              overflow: "hidden",
+            }}
           >
             <Group justify="space-between" gap={4} wrap="nowrap">
               <Text

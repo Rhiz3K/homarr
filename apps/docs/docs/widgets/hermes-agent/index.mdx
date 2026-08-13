@@ -29,16 +29,16 @@ The Hermes Agent widget summarizes gateway health and readiness, installed versi
 
 ### Summary metrics
 
-| Metric        | Description                                                                                 |
-| ------------- | ------------------------------------------------------------------------------------------- |
-| **Version**   | Hermes Agent application version reported by the API server or dashboard.                   |
-| **Update**    | Commits behind the Hermes upstream branch, with published-release comparison as a fallback. |
-| **Jobs**      | Active scheduled jobs compared with all reported jobs; failed jobs use an error state.      |
-| **Skills**    | Enabled skills compared with all discovered skills.                                         |
-| **Platforms** | Connected messaging platforms compared with all configured platforms.                       |
-| **Toolsets**  | Enabled toolsets compared with all discovered toolsets.                                     |
-| **Agents**    | Agents currently active in the gateway.                                                     |
-| **Sessions**  | Active or recently returned sessions, depending on the selected Hermes surface.             |
+| Metric        | Description                                                                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Version**   | Hermes Agent application version reported by the API server or dashboard.                                                                                               |
+| **Update**    | Commits behind the Hermes upstream branch, with published-release comparison as a fallback.                                                                             |
+| **Jobs**      | Active scheduled jobs compared with all reported jobs; failed jobs use an error state.                                                                                  |
+| **Skills**    | Enabled skills compared with all discovered skills.                                                                                                                     |
+| **Platforms** | Connected messaging platforms compared with all configured platforms.                                                                                                   |
+| **Toolsets**  | Enabled toolsets compared with all discovered toolsets.                                                                                                                 |
+| **Agents**    | Active agents / all available Hermes profiles. The hover tooltip explains the ratio.                                                                                    |
+| **Sessions**  | Active sessions / sessions with activity during the last 24 hours. `+` marks a lower bound. The tile is always labeled **Sessions**, with the ratio explained on hover. |
 
 ### Responsive layout
 
@@ -51,18 +51,20 @@ The resize sequence covers every width and height combination from W1×H1 throug
 - W1×H2 through W1×H4 tiles keep a single metric-grid column, including when a large board makes W1 wider in pixels. They show all eight summary metrics with visible labels and distribute them across the full height. Short physical rows use an icon-free label-and-value line; as height becomes available, each tile progressively enlarges and stacks its label with its value.
 - Typography scales continuously with both available width and height: titles, status badges, metric labels, values, detail rows, and footer text grow when the widget has room. Detail lists use the width of their individual panel, so narrow W3/W6 columns stay compact while wider panels remain easy to scan.
 - Medium tiles add platforms, toolsets, agents, and sessions.
-- Detail panels are selected from the available height, and each list is capped to the number of rows that fits. The widget does not introduce an inner scrollbar; larger tiles progressively reveal more sessions, jobs, platforms, and toolsets.
-- Scheduled-job names use one line when the panel is wide and up to three lines in narrow multi-column panels. Multi-line panels reduce their row count to preserve the no-scroll layout.
-- Large tiles show optional platform, recent-session, scheduled-job, and toolset sections. Each section can be disabled in the widget configuration.
-- The detailed card follows the canonical Nous Research Hermes Teal direction: a deep teal canvas, warm cream text, emerald and amber state accents, technical monospace values, and uppercase brand chrome. Disable the brand theme option to follow the current Homarr theme in light and dark mode instead.
+- Detail panels are selected from the available height, and each list is capped to the number of rows that fits. When rows remain hidden, the final available row reports `+ X more` and links with the rest of the panel to the matching Hermes dashboard section. Paginated session results use a second `+` to mark a lower-bound count. The widget does not introduce an inner scrollbar; larger tiles progressively reveal more sessions, jobs, platforms, and skills.
+- Scheduled-job names always use one line. Long names end in an ellipsis while their full name and status remain available on hover, allowing narrow panels to spend their height on additional jobs instead of wrapped text.
+- Large tiles show optional platform, recent-session, scheduled-job, and skill sections. Enabled skills are ordered by the cumulative usage count reported by Hermes, highest first, with names used as a stable tie-breaker. Hermes does not currently report a last-used timestamp for skills, so the widget does not imply recency. Each section can be disabled in the widget configuration.
+- The detailed card can use all built-in Hermes dashboard themes: Hermes Teal, Hermes Teal (Large), Nous Blue, Midnight, Ember, Mono, Cyberpunk, and Rosé. Each preset brings its Hermes palette, semantic state colors, corner radius, and default typefaces. Disable **Hermes theme colors** to follow the current Homarr theme in light and dark mode instead.
+- The font picker is independent of the color theme and mirrors Hermes' curated catalog. **Theme default** keeps the preset typeface. Homarr self-hosts the curated webfonts using its build-time font pipeline, so selecting a font does not make the browser contact Google Fonts and remains compatible with `NO_EXTERNAL_CONNECTION`. Every choice also retains a system fallback.
 - Recent sessions use single-line titles with compact source icons for Telegram, cron, web, API, CLI, and other adapters. Full titles remain available on hover. Message previews, chat and user identifiers, and token or cost metrics are discarded at the server-side integration boundary.
+- The **Agents** summary is shown as `active/total`, where dashboard profiles provide the total. The **Sessions** summary is shown as `active/24h`. Its active side combines Hermes' status counter with per-session activity flags; when the API omits those flags, Homarr uses `last_active` or `started_at` within the last five minutes. The 24-hour side counts recent activity timestamps. Both tiles retain their entity names at every responsive size and explain their ratios on hover. Session activity is independent from the historical **Recent sessions** list, so completed rows can remain visible while the active count is zero.
 - Dashboard mode makes the title, dashboard badge, summary metrics, and visible detail panels link to their matching Hermes dashboard page when an external integration URL is configured. The internal server-to-server URL is never sent to the browser.
 - Scheduled jobs dedicate the full row width to the job name. Failed jobs sort first, followed by paused and enabled jobs. Failed, paused, and enabled names use error, warning, and success colors instead of repeating a status word; when a job is both failed and paused, the paused warning state takes visual precedence. The full name, textual state, and schedule remain available to assistive technology and on hover. Raw prompts, scripts, and error messages are never exposed because they can contain sensitive values.
 - Platform rows use a compact state dot and clock icon so long platform names keep priority. Hovering the indicators reveals the textual state and last update time.
 
 ### Privacy and public boards
 
-The widget always returns a narrow, server-generated data model instead of forwarding Hermes API objects to the browser. Anonymous visitors and board viewers without direct permission to use the Hermes integration receive aggregate health and count metrics only. Session titles, job names and schedules, platform names, and toolset names require direct `use` permission for that integration.
+The widget always returns a narrow, server-generated data model instead of forwarding Hermes API objects to the browser. Anonymous visitors and board viewers without direct permission to use the Hermes integration receive aggregate health and count metrics only. Session titles, job names and schedules, platform names, and skill names, categories, and usage counts require direct `use` permission for that integration. Skill descriptions and provenance are discarded at the integration boundary.
 
 Widget display options only control presentation. They are not used as access controls; sensitive fields are removed or withheld by the server before the response is sent.
 
@@ -70,7 +72,7 @@ Widget display options only control presentation. They are not used as access co
 
 API server mode on port `8642` requires the configured bearer API key. The current API returns recent session metadata but does not expose messaging chat, channel, or topic identifiers, so the widget reports configured platform status without claiming channel-level data.
 
-Dashboard mode on port `9119` uses the public status endpoint and, when a local or otherwise unprotected dashboard exposes its short-lived session token, also loads the exact Hermes updater status, sessions, jobs, skills, and toolsets. Homarr does not perform an interactive dashboard login; protected detail endpoints are labeled as unavailable.
+Dashboard mode on port `9119` uses the public status endpoint and, when a local or otherwise unprotected dashboard exposes its short-lived session token, also loads the exact Hermes updater status, sessions, jobs, skills, and toolsets. On Hermes installations with multiple independent live gateways, Homarr aggregates their active-agent and active-session counters and merges their recent session pages. If one profile cannot be queried, totals from the remaining profiles are marked as lower bounds instead of being presented as complete. Homarr does not perform an interactive dashboard login; protected detail endpoints are labeled as unavailable.
 
 Data is cached for 30 seconds and refreshed in the background. The dashboard updater result follows Hermes' own cache policy. GitHub release fallback checks are cached for one hour and are skipped when external connections are disabled.
 

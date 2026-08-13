@@ -15,9 +15,15 @@ import {
 import { useScopedI18n } from "@homarr/translation/client";
 
 import type { DetailsTypographyScale } from "./layout";
-import { getJobDisplayState, getJobSortPriority, getStatusColor } from "./utils";
+import {
+  getJobDisplayState,
+  getJobSortPriority,
+  getOverflowList,
+  getThemeStatusColor,
+  sortSkillsByUsage,
+} from "./utils";
 import { HERMES_TECHNICAL_TEXT_STYLE, useHermesTheme } from "./theme";
-import type { HermesJobDetail, HermesPlatformDetail, HermesSessionDetail, HermesToolsetDetail } from "./types";
+import type { HermesJobDetail, HermesPlatformDetail, HermesSessionDetail, HermesSkillDetail } from "./types";
 
 export function PlatformsList({
   platforms,
@@ -30,11 +36,12 @@ export function PlatformsList({
 }) {
   const t = useScopedI18n("widget.hermesAgent");
   const theme = useHermesTheme();
-  const entries = platforms
-    .toSorted((platformA, platformB) => platformA.name.localeCompare(platformB.name))
-    .slice(0, maxItems);
+  const sortedPlatforms = platforms.toSorted((platformA, platformB) => platformA.name.localeCompare(platformB.name));
+  const { visibleItems: entries, remainingCount, remainingIsLowerBound } = getOverflowList(sortedPlatforms, maxItems);
 
-  if (entries.length === 0) return <EmptyText text={t("empty.platforms")} fontSize={typography.auxiliary} />;
+  if (entries.length === 0 && remainingCount === 0) {
+    return <EmptyText text={t("empty.platforms")} fontSize={typography.auxiliary} />;
+  }
 
   return (
     <Stack gap={typography.rowGap}>
@@ -52,7 +59,7 @@ export function PlatformsList({
                 h={typography.indicator}
                 style={{
                   borderRadius: "50%",
-                  background: `var(--mantine-color-${getStatusColor(platform.state)}-6)`,
+                  background: getThemeStatusColor(theme, platform.state),
                   flexShrink: 0,
                 }}
                 title={platform.state ?? t("unknown")}
@@ -82,24 +89,35 @@ export function PlatformsList({
           </Group>
         );
       })}
+      <MoreRow count={remainingCount} isLowerBound={remainingIsLowerBound} typography={typography} />
     </Stack>
   );
 }
 
 export function SessionsList({
   sessions,
+  totalItems,
+  hasMore,
   maxItems,
   typography,
 }: {
   sessions: HermesSessionDetail[];
+  totalItems: number | null;
+  hasMore: boolean;
   maxItems: number;
   typography: DetailsTypographyScale;
 }) {
   const t = useScopedI18n("widget.hermesAgent");
   const theme = useHermesTheme();
-  const visibleSessions = sessions.slice(0, maxItems);
+  const {
+    visibleItems: visibleSessions,
+    remainingCount,
+    remainingIsLowerBound,
+  } = getOverflowList(sessions, maxItems, { totalItems, hasMore });
 
-  if (visibleSessions.length === 0) return <EmptyText text={t("empty.sessions")} fontSize={typography.auxiliary} />;
+  if (visibleSessions.length === 0 && remainingCount === 0) {
+    return <EmptyText text={t("empty.sessions")} fontSize={typography.auxiliary} />;
+  }
 
   return (
     <Stack gap={typography.rowGap}>
@@ -123,6 +141,7 @@ export function SessionsList({
           </Group>
         );
       })}
+      <MoreRow count={remainingCount} isLowerBound={remainingIsLowerBound} typography={typography} />
     </Stack>
   );
 }
@@ -130,21 +149,20 @@ export function SessionsList({
 export function JobsList({
   jobs,
   maxItems,
-  lineClamp,
   typography,
 }: {
   jobs: HermesJobDetail[];
   maxItems: number;
-  lineClamp: 1 | 2 | 3;
   typography: DetailsTypographyScale;
 }) {
   const t = useScopedI18n("widget.hermesAgent");
   const theme = useHermesTheme();
-  const visibleJobs = jobs
-    .toSorted((jobA, jobB) => getJobSortPriority(jobA) - getJobSortPriority(jobB))
-    .slice(0, maxItems);
+  const sortedJobs = jobs.toSorted((jobA, jobB) => getJobSortPriority(jobA) - getJobSortPriority(jobB));
+  const { visibleItems: visibleJobs, remainingCount, remainingIsLowerBound } = getOverflowList(sortedJobs, maxItems);
 
-  if (visibleJobs.length === 0) return <EmptyText text={t("empty.jobs")} fontSize={typography.auxiliary} />;
+  if (visibleJobs.length === 0 && remainingCount === 0) {
+    return <EmptyText text={t("empty.jobs")} fontSize={typography.auxiliary} />;
+  }
 
   return (
     <Stack gap={typography.rowGap}>
@@ -165,13 +183,13 @@ export function JobsList({
         const description = `${name} · ${status} · ${schedule}`;
 
         return (
-          <Group key={job.id} align="flex-start" wrap="nowrap" mih={getRowMinHeight(typography)} miw={0}>
+          <Group key={job.id} wrap="nowrap" mih={getRowMinHeight(typography)} miw={0}>
             <Text
               fz={typography.item}
               fw={600}
               c={color}
-              lh={lineClamp === 3 ? 1.2 : 1.3}
-              lineClamp={lineClamp}
+              lh={1.3}
+              truncate="end"
               title={description}
               aria-label={description}
               style={{ flex: "1 1 auto", minWidth: 0 }}
@@ -181,6 +199,7 @@ export function JobsList({
           </Group>
         );
       })}
+      <MoreRow count={remainingCount} isLowerBound={remainingIsLowerBound} typography={typography} />
     </Stack>
   );
 }
@@ -219,56 +238,95 @@ function SessionSourceIcon({ source, size }: { source: string; size: number }) {
   );
 }
 
-export function ToolsetsList({
-  toolsets,
+export function SkillsList({
+  skills,
   maxItems,
   typography,
 }: {
-  toolsets: HermesToolsetDetail[];
+  skills: HermesSkillDetail[];
   maxItems: number;
   typography: DetailsTypographyScale;
 }) {
   const t = useScopedI18n("widget.hermesAgent");
   const theme = useHermesTheme();
-  const enabledToolsets = toolsets.filter((toolset) => toolset.enabled);
+  const enabledSkills = sortSkillsByUsage(skills.filter((skill) => skill.enabled));
+  const {
+    visibleItems: visibleSkills,
+    remainingCount,
+    remainingIsLowerBound,
+  } = getOverflowList(enabledSkills, maxItems);
 
-  if (toolsets.length === 0) return <EmptyText text={t("empty.toolsets")} fontSize={typography.auxiliary} />;
+  if (skills.length === 0) return <EmptyText text={t("empty.skills")} fontSize={typography.auxiliary} />;
+  if (enabledSkills.length === 0) {
+    return <EmptyText text={t("empty.enabledSkills")} fontSize={typography.auxiliary} />;
+  }
 
   return (
     <Stack gap={typography.rowGap}>
-      {enabledToolsets.slice(0, maxItems).map((toolset) => (
-        <Group
-          key={toolset.name}
-          justify="space-between"
-          align="flex-start"
-          wrap="nowrap"
-          gap={5}
-          mih={getRowMinHeight(typography)}
-        >
+      {visibleSkills.map((skill) => (
+        <Group key={skill.name} justify="space-between" wrap="nowrap" gap={5} mih={getRowMinHeight(typography)}>
           <Text
             fz={typography.item}
             fw={500}
             c={theme.textPrimary}
             lh={1.3}
-            lineClamp={1}
-            title={toolset.label ?? toolset.name}
+            truncate="end"
+            title={skill.category ? `${skill.name} · ${skill.category}` : skill.name}
             style={{ flex: "1 1 auto", minWidth: 0 }}
           >
-            {toolset.label ?? toolset.name}
+            {skill.name}
           </Text>
-          <Text
-            fz={typography.item}
-            fw={700}
-            c={toolset.configured === false ? theme.warning : theme.success}
-            title={t("toolsets.tools", { count: toolset.toolCount })}
-            style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap", flexShrink: 0 }}
-          >
-            {toolset.toolCount}
-          </Text>
+          {skill.usage !== null && (
+            <Text
+              fz={typography.item}
+              fw={700}
+              c={theme.success}
+              lh={1.3}
+              title={t("skills.usage", { count: skill.usage })}
+              aria-label={t("skills.usage", { count: skill.usage })}
+              style={{ ...HERMES_TECHNICAL_TEXT_STYLE, whiteSpace: "nowrap", flexShrink: 0 }}
+            >
+              {skill.usage}
+            </Text>
+          )}
         </Group>
       ))}
-      {enabledToolsets.length === 0 && <EmptyText text={t("empty.enabledToolsets")} fontSize={typography.auxiliary} />}
+      <MoreRow count={remainingCount} isLowerBound={remainingIsLowerBound} typography={typography} />
     </Stack>
+  );
+}
+
+function MoreRow({
+  count,
+  isLowerBound,
+  typography,
+}: {
+  count: number;
+  isLowerBound: boolean;
+  typography: DetailsTypographyScale;
+}) {
+  const t = useScopedI18n("widget.hermesAgent");
+  const theme = useHermesTheme();
+  if (count === 0) return null;
+
+  const label = isLowerBound ? t("overflow.moreAtLeast", { count }) : t("overflow.more", { count });
+  const title = isLowerBound ? t("overflow.moreAtLeastTitle", { count }) : label;
+
+  return (
+    <Group wrap="nowrap" mih={getRowMinHeight(typography)}>
+      <Text
+        fz={typography.auxiliary}
+        fw={600}
+        c={theme.textSecondary}
+        lh={1.3}
+        lineClamp={1}
+        title={title}
+        aria-label={title}
+        style={{ ...HERMES_TECHNICAL_TEXT_STYLE, minWidth: 0 }}
+      >
+        {label}
+      </Text>
+    </Group>
   );
 }
 

@@ -2568,8 +2568,16 @@
       "unknownShort": "n/a",
       "option": {
         "brandTheme": {
-          "label": "Hermes brand theme",
-          "description": "Use the Hermes teal appearance instead of following the board theme"
+          "label": "Hermes theme colors",
+          "description": "Use a Hermes dashboard color theme instead of following the Homarr board theme"
+        },
+        "themePreset": {
+          "label": "Hermes theme",
+          "description": "Choose one of the built-in Hermes dashboard themes"
+        },
+        "fontFamily": {
+          "label": "Font",
+          "description": "Use the selected theme's font or override it with a font from the Hermes dashboard catalog"
         },
         "showPlatforms": {
           "label": "Show platforms",
@@ -2584,8 +2592,8 @@
           "description": "Show scheduled and paused jobs when detail access is allowed"
         },
         "showToolsets": {
-          "label": "Show toolsets",
-          "description": "Show enabled toolsets when detail access is allowed"
+          "label": "Show skills",
+          "description": "Show enabled skills ordered by Hermes usage when detail access is allowed"
         }
       },
       "meta": {
@@ -2608,10 +2616,12 @@
         }
       },
       "summary": {
-        "activeAgents": "Agents",
+        "agents": "Agents",
+        "agentsActivityTitle": "{active} active; {total} available in total",
         "jobs": "Jobs",
         "platforms": "Platforms",
         "sessions": "Sessions",
+        "sessionsActivityTitle": "{active} active; {last24Hours} active in the last 24 hours",
         "skills": "Skills",
         "toolsets": "Toolsets",
         "update": "Update",
@@ -2621,14 +2631,19 @@
         "platforms": "Platforms",
         "sessions": "Recent sessions",
         "jobs": "Scheduled jobs",
-        "toolsets": "Toolsets"
+        "skills": "Skills"
+      },
+      "overflow": {
+        "more": "+ {count} more",
+        "moreAtLeast": "+ {count}+ more",
+        "moreAtLeastTitle": "At least {count} more items"
       },
       "empty": {
         "platforms": "No platforms reported",
         "sessions": "No recent sessions",
         "jobs": "No scheduled jobs",
-        "toolsets": "No toolsets reported",
-        "enabledToolsets": "No enabled toolsets",
+        "skills": "No skills reported",
+        "enabledSkills": "No enabled skills",
         "unavailable": "This endpoint is not available",
         "restricted": "Direct integration permission is required"
       },
@@ -2648,7 +2663,7 @@
       "action": {
         "openSection": "Open {section} in Hermes Agent"
       },
-      "toolsets": { "tools": "{count, plural, =1 {# tool} other {# tools}}" },
+      "skills": { "usage": "{count, plural, =1 {Used # time} other {Used # times}}" },
       "footer": { "updated": "Updated {when}" },
       "error": { "internalServerError": "Failed to fetch Hermes Agent data" }
     },

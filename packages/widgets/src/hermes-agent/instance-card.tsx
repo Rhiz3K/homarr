@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import dayjs from "dayjs";
 import { Anchor, Avatar, Badge, Card, Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import {
@@ -26,46 +27,39 @@ import {
   getLogoSize,
   getMetricColumns,
   getMetricSpacing,
+  scaleHermesTypography,
   getTypographyScale,
   getVisibleMetricIds,
 } from "./layout";
 import type { MetricDefinition } from "./metric-tile";
 import { MetricTile } from "./metric-tile";
 import type { HermesTheme } from "./theme";
-import { HERMES_BRAND_THEME, HERMES_CHROME_TEXT_STYLE, HERMES_NEUTRAL_THEME, HermesThemeContext } from "./theme";
+import { HERMES_CHROME_TEXT_STYLE, HermesThemeContext } from "./theme";
+import { resolveHermesTheme } from "./theme-data";
 import type { HermesAgentSuccessInstance } from "./types";
-import { getCompactStatusKey, getStatusColor } from "./utils";
+import { getCompactStatusKey, getThemeStatusColor } from "./utils";
 
 interface HermesAgentInstanceCardProps {
   instance: HermesAgentSuccessInstance;
   width: number;
   height: number;
-  isNarrow: boolean;
-  isShort: boolean;
-  isTiny: boolean;
   options: WidgetComponentProps<"hermesAgent">["options"];
 }
 
-export function HermesAgentInstanceCard({
-  instance,
-  width,
-  height,
-  isNarrow,
-  isShort,
-  isTiny,
-  options,
-}: HermesAgentInstanceCardProps) {
+export function HermesAgentInstanceCard({ instance, width, height, options }: HermesAgentInstanceCardProps) {
   const t = useScopedI18n("widget.hermesAgent");
-  const theme = options.brandTheme ? HERMES_BRAND_THEME : HERMES_NEUTRAL_THEME;
+  const theme = useMemo(
+    () => resolveHermesTheme(options.brandTheme, options.themePreset, options.fontFamily),
+    [options.brandTheme, options.fontFamily, options.themePreset],
+  );
   const { overview } = instance;
   const dashboardUrl = instance.integrationUrl?.replace(/\/+$/, "") ?? null;
   const dashboardRoutes = {
-    config: dashboardUrl ? getDashboardUrl(dashboardUrl, "/config") : null,
-    cron: dashboardUrl ? getDashboardUrl(dashboardUrl, "/cron") : null,
-    profiles: dashboardUrl ? getDashboardUrl(dashboardUrl, "/profiles") : null,
-    sessions: dashboardUrl ? getDashboardUrl(dashboardUrl, "/sessions") : null,
-    skills: dashboardUrl ? getDashboardUrl(dashboardUrl, "/skills") : null,
-    system: dashboardUrl ? getDashboardUrl(dashboardUrl, "/system") : null,
+    cron: dashboardUrl ? `${dashboardUrl}/cron` : null,
+    profiles: dashboardUrl ? `${dashboardUrl}/profiles` : null,
+    sessions: dashboardUrl ? `${dashboardUrl}/sessions` : null,
+    skills: dashboardUrl ? `${dashboardUrl}/skills` : null,
+    system: dashboardUrl ? `${dashboardUrl}/system` : null,
   };
   const getModeRoute = (route: keyof typeof dashboardRoutes) =>
     overview.mode === "dashboard" ? (dashboardRoutes[route] ?? undefined) : undefined;
@@ -74,13 +68,21 @@ export function HermesAgentInstanceCard({
   const enabledToolsets = overview.summary.toolsets.enabled;
   const enabledSkills = overview.summary.skills.enabled;
   const activeSessions = overview.summary.activeSessions;
+  const sessionsLast24Hours = overview.summary.sessionsLast24Hours;
+  const totalAgents = overview.summary.totalAgents ?? null;
   const jobSummary = overview.summary.jobs;
   const version = overview.version ?? t("unknown");
   const release = overview.release;
   const commitsBehind = overview.update?.commitsBehind;
-  const dense = isTiny || isShort;
   const layoutMode = getLayoutMode(width, height);
-  const typography = getTypographyScale(width, height, layoutMode);
+  const dense = layoutMode === "micro" || layoutMode === "mini" || layoutMode === "strip" || layoutMode === "tall";
+  const isNarrowLayout = layoutMode === "micro" || layoutMode === "tall";
+  const usesCompactStatus = layoutMode === "micro" || layoutMode === "mini" || layoutMode === "tall";
+  const compactTypographyScale =
+    layoutMode === "micro" || layoutMode === "mini" || layoutMode === "strip" || layoutMode === "tall"
+      ? Math.min(theme.typographyScale, 1.08)
+      : theme.typographyScale;
+  const typography = scaleHermesTypography(getTypographyScale(width, height, layoutMode), compactTypographyScale);
   const isMicroMetricMode =
     layoutMode === "micro" || layoutMode === "mini" || layoutMode === "strip" || layoutMode === "tall";
   const collapsesMetricValues = layoutMode === "micro" || layoutMode === "mini" || layoutMode === "tall";
@@ -107,7 +109,7 @@ export function HermesAgentInstanceCard({
     ? getRatioColor(theme, enabledToolsets, overview.summary.toolsets.total)
     : theme.textTertiary;
   const activeAgentsColor = getNeutralCountColor(theme, overview.summary.activeAgents);
-  const activeSessionsColor = getNeutralCountColor(theme, activeSessions);
+  const activeSessionsColor = getNeutralCountColor(theme, activeSessions ?? sessionsLast24Hours);
   const skillsValue = !overview.dataAvailability.skills
     ? t("unknownShort")
     : overview.summary.skills.total > 0
@@ -119,7 +121,19 @@ export function HermesAgentInstanceCard({
     ? `${enabledToolsets}/${overview.summary.toolsets.total}`
     : t("unknownShort");
   const jobsValue = overview.dataAvailability.jobs ? `${jobSummary.active}/${jobSummary.total}` : t("unknownShort");
-  const sessionsValue = activeSessions ?? t("unknownShort");
+  const activeSessionsValue = formatSessionCount(
+    activeSessions,
+    overview.summary.activeSessionsHasMore,
+    t("unknownShort"),
+  );
+  const sessionsLast24HoursValue = formatSessionCount(
+    sessionsLast24Hours,
+    overview.summary.sessionsLast24HoursHasMore,
+    t("unknownShort"),
+  );
+  const sessionsValue = `${activeSessionsValue}/${sessionsLast24HoursValue}`;
+  const agentsValue =
+    totalAgents === null ? overview.summary.activeAgents : `${overview.summary.activeAgents}/${totalAgents}`;
   const updateValue = !overview.update
     ? t("unknownShort")
     : !overview.update.hasNewRelease
@@ -133,10 +147,9 @@ export function HermesAgentInstanceCard({
   const compactStatusLabel = compactStatusKey
     ? t(`status.short.${compactStatusKey}`)
     : abbreviateStatus(gatewayState ?? t("unknown"));
-  const statusLabel =
-    isNarrow || layoutMode === "micro" || layoutMode === "mini" ? compactStatusLabel : verboseStatusLabel;
+  const statusLabel = usesCompactStatus ? compactStatusLabel : verboseStatusLabel;
   const titleLabel = instance.integrationName;
-  const showVersion = !isHeightOneCompact && !isNarrow && layoutMode !== "strip";
+  const showVersion = !isHeightOneCompact && !isNarrowLayout && layoutMode !== "strip";
   const showCardShell = layoutMode === "standard" || layoutMode === "showcase";
   const detailsLayout = getDetailsLayout(width, height, layoutMode);
   const visibleMetricIds = getVisibleMetricIds(layoutMode, overview.update !== null);
@@ -199,8 +212,12 @@ export function HermesAgentInstanceCard({
     {
       id: "agents",
       icon: <IconActivity size={iconSize} aria-hidden="true" />,
-      label: t("summary.activeAgents"),
-      value: overview.summary.activeAgents,
+      label: t("summary.agents"),
+      value: agentsValue,
+      title: t("summary.agentsActivityTitle", {
+        active: overview.summary.activeAgents,
+        total: totalAgents ?? t("unknownShort"),
+      }),
       color: activeAgentsColor,
       href: getModeRoute("profiles"),
     },
@@ -209,6 +226,10 @@ export function HermesAgentInstanceCard({
       icon: <IconMessageCircle size={iconSize} aria-hidden="true" />,
       label: t("summary.sessions"),
       value: sessionsValue,
+      title: t("summary.sessionsActivityTitle", {
+        active: activeSessionsValue,
+        last24Hours: sessionsLast24HoursValue,
+      }),
       color: activeSessionsColor,
       href: getModeRoute("sessions"),
     },
@@ -297,7 +318,7 @@ export function HermesAgentInstanceCard({
             component="output"
             aria-label={verboseStatusLabel}
             title={verboseStatusLabel}
-            c={getStatusColor(gatewayState)}
+            c={getThemeStatusColor(theme, gatewayState)}
             fz={typography.status}
             lh={1}
             style={{ flexShrink: 0 }}
@@ -306,15 +327,16 @@ export function HermesAgentInstanceCard({
           </Text>
         ) : (
           <Badge
-            variant={isNarrow ? "light" : "dot"}
-            color={getStatusColor(gatewayState)}
+            variant={isNarrowLayout ? "light" : "dot"}
+            color={getThemeStatusColor(theme, gatewayState)}
             size={dense ? "xs" : "sm"}
-            maw={isNarrow ? 44 : 110}
+            maw={isNarrowLayout ? 44 : 110}
             title={verboseStatusLabel}
             styles={{
               root: {
                 background: theme.surfaceRaised,
                 border: `1px solid ${theme.border}`,
+                borderRadius: theme.radius,
               },
               label: { color: theme.textPrimary, ...HERMES_CHROME_TEXT_STYLE, fontSize: typography.status },
             }}
@@ -402,10 +424,6 @@ export function HermesAgentInstanceCard({
   );
 }
 
-function getDashboardUrl(dashboardUrl: string, path: string) {
-  return `${dashboardUrl}${path}`;
-}
-
 function getRatioColor(theme: HermesTheme, active: number, total: number) {
   if (total === 0) return theme.textTertiary;
   if (active === total) return theme.success;
@@ -415,6 +433,10 @@ function getRatioColor(theme: HermesTheme, active: number, total: number) {
 
 function getNeutralCountColor(theme: HermesTheme, value: number | null) {
   return value !== null && value > 0 ? theme.textPrimary : theme.textTertiary;
+}
+
+function formatSessionCount(value: number | null | undefined, hasMore: boolean | undefined, unavailable: string) {
+  return value === null || value === undefined ? unavailable : `${value}${hasMore ? "+" : ""}`;
 }
 
 function abbreviateStatus(status: string) {

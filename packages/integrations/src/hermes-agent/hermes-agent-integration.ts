@@ -9,7 +9,13 @@ import { ErrorWithMetadata } from "@homarr/core/infrastructure/logs/error";
 import type { IntegrationTestingInput } from "../base/integration";
 import { Integration } from "../base/integration";
 import type { TestingResult } from "../base/test-connection/test-connection-service";
-import type { HermesAgentOverview, HermesDashboardStatus, HermesUpdateStatus } from "./hermes-agent-types";
+import type {
+  HermesAgentOverview,
+  HermesDashboardStatus,
+  HermesSession,
+  HermesSessionsPage,
+  HermesUpdateStatus,
+} from "./hermes-agent-types";
 import {
   hermesApiHealthSchema,
   hermesCapabilitiesSchema,
@@ -18,6 +24,7 @@ import {
   hermesDashboardUpdateSchema,
   hermesDetailedHealthSchema,
   hermesJobsResponseSchema,
+  parseHermesTimestamp,
   hermesReleaseSchema,
   hermesSessionsResponseSchema,
   hermesSkillsResponseSchema,
@@ -33,6 +40,7 @@ const githubHeaders = {
 
 const githubUpdateCacheDurationMs = 60 * 60 * 1000;
 const githubUpdateCacheMaxEntries = 32;
+const sessionFetchLimit = 100;
 const githubUpdateCache = new Map<
   string,
   {
@@ -87,7 +95,11 @@ export class HermesAgentIntegration extends Integration {
     const [health] = await Promise.all([this.getDetailedHealthAsync(), this.getCapabilitiesAsync()]);
 
     const [sessions, jobs, toolsets, skills] = await Promise.all([
-      this.getOptionalDataAsync("sessions", () => this.getSessionsAsync(), []),
+      this.getOptionalDataAsync("sessions", () => this.getSessionsAsync(), {
+        items: [],
+        total: null,
+        hasMore: false,
+      }),
       this.getOptionalDataAsync("jobs", () => this.getJobsAsync(), []),
       this.getOptionalDataAsync("toolsets", () => this.getToolsetsAsync(), []),
       this.getOptionalDataAsync("skills", () => this.getSkillsAsync(), []),
@@ -96,7 +108,9 @@ export class HermesAgentIntegration extends Integration {
     return {
       mode: "apiServer",
       health,
-      sessions: sessions.data,
+      sessions: sessions.data.items,
+      sessionsTotal: sessions.data.total,
+      sessionsHasMore: sessions.data.hasMore,
       jobs: jobs.data,
       toolsets: toolsets.data,
       dashboardStatus: null,
@@ -118,8 +132,17 @@ export class HermesAgentIntegration extends Integration {
       null,
     );
     const dashboardHeaders = token ? { "X-Hermes-Session-Token": token } : null;
-    const releaseDate = dashboardStatus.release_date;
-    const [skills, sessions, jobs, toolsets, update] = await Promise.all([
+    const authenticatedDashboardStatus = dashboardHeaders
+      ? await this.getOptionalAsync(
+          "authenticated dashboard status",
+          () => this.getJsonAsync("/api/status", hermesDashboardStatusSchema, undefined, false, dashboardHeaders),
+          dashboardStatus,
+        )
+      : dashboardStatus;
+    const activityProfiles = getDashboardActivityProfiles(authenticatedDashboardStatus);
+    const releaseDate = authenticatedDashboardStatus.release_date;
+    const [activityStatus, skills, sessions, jobs, toolsets, update] = await Promise.all([
+      this.getDashboardActivityStatusAsync(authenticatedDashboardStatus, activityProfiles, dashboardHeaders),
       dashboardHeaders
         ? this.getOptionalDataAsync(
             "dashboard skills",
@@ -128,19 +151,8 @@ export class HermesAgentIntegration extends Integration {
           )
         : this.getUnavailableData([]),
       dashboardHeaders
-        ? this.getOptionalDataAsync(
-            "dashboard sessions",
-            () =>
-              this.getJsonAsync(
-                "/api/sessions",
-                hermesSessionsResponseSchema,
-                { limit: 50, order: "recent" },
-                false,
-                dashboardHeaders,
-              ),
-            [],
-          )
-        : this.getUnavailableData([]),
+        ? this.getDashboardSessionsDataAsync(activityProfiles, dashboardHeaders)
+        : this.getUnavailableData({ items: [], total: null, hasMore: false }),
       dashboardHeaders
         ? this.getOptionalDataAsync(
             "dashboard jobs",
@@ -168,21 +180,24 @@ export class HermesAgentIntegration extends Integration {
     return {
       mode: "dashboard",
       health: {
-        status: dashboardStatus.gateway_running === false ? "error" : "ok",
+        status: activityStatus.gateway_running === false ? "error" : "ok",
         platform: "hermes-dashboard",
-        version: dashboardStatus.version,
-        gateway_state: dashboardStatus.gateway_state,
-        platforms: dashboardStatus.gateway_platforms,
-        active_agents: dashboardStatus.active_agents ?? 0,
-        gateway_busy: dashboardStatus.gateway_busy,
-        gateway_drainable: dashboardStatus.gateway_drainable,
-        exit_reason: dashboardStatus.gateway_exit_reason,
-        updated_at: dashboardStatus.gateway_updated_at,
+        version: activityStatus.version,
+        gateway_state: activityStatus.gateway_state,
+        platforms: activityStatus.gateway_platforms,
+        active_agents: activityStatus.active_agents ?? 0,
+        active_sessions: activityStatus.active_sessions,
+        gateway_busy: activityStatus.gateway_busy,
+        gateway_drainable: activityStatus.gateway_drainable,
+        exit_reason: activityStatus.gateway_exit_reason,
+        updated_at: activityStatus.gateway_updated_at,
       },
-      sessions: sessions.data,
+      sessions: sessions.data.items,
+      sessionsTotal: sessions.data.total,
+      sessionsHasMore: sessions.data.hasMore,
       jobs: jobs.data,
       toolsets: toolsets.data,
-      dashboardStatus,
+      dashboardStatus: activityStatus,
       skills: skills.data,
       update,
       dataAvailability: {
@@ -204,8 +219,9 @@ export class HermesAgentIntegration extends Integration {
 
   public async getSessionsAsync() {
     return await this.getJsonAsync("/api/sessions", hermesSessionsResponseSchema, {
-      limit: 10,
+      limit: sessionFetchLimit,
       include_children: false,
+      order: "recent",
     });
   }
 
@@ -225,6 +241,69 @@ export class HermesAgentIntegration extends Integration {
 
   public async getDashboardStatusAsync() {
     return await this.getJsonAsync("/api/status", hermesDashboardStatusSchema, undefined, false);
+  }
+
+  private async getDashboardActivityStatusAsync(
+    dashboardStatus: HermesDashboardStatus,
+    profiles: string[],
+    dashboardHeaders: Record<string, string> | null,
+  ) {
+    if (profiles.length === 0) return dashboardStatus;
+
+    const statuses = await Promise.all(
+      profiles.map((profile) =>
+        this.getOptionalAsync(
+          "dashboard profile status",
+          () =>
+            this.getJsonAsync("/api/status", hermesDashboardStatusSchema, { profile }, false, dashboardHeaders ?? {}),
+          null,
+        ),
+      ),
+    );
+    const availableStatuses = statuses.filter((status): status is HermesDashboardStatus => status !== null);
+
+    return availableStatuses.length === 0
+      ? dashboardStatus
+      : aggregateDashboardActivity(dashboardStatus, availableStatuses);
+  }
+
+  private async getDashboardSessionsDataAsync(profiles: string[], dashboardHeaders: Record<string, string>) {
+    const scopes: Array<string | null> = profiles.length === 0 ? [null] : profiles;
+    const pages = await Promise.all(
+      scopes.map((profile) =>
+        this.getOptionalDataAsync(
+          "dashboard profile sessions",
+          () =>
+            this.getJsonAsync(
+              "/api/sessions",
+              hermesSessionsResponseSchema,
+              {
+                limit: sessionFetchLimit,
+                order: "recent",
+                ...(profile ? { profile } : {}),
+              },
+              false,
+              dashboardHeaders,
+            ),
+          { items: [], total: null, hasMore: true },
+        ),
+      ),
+    );
+    const allItems = pages
+      .flatMap((page) => page.data.items)
+      .toSorted((left, right) => getSessionActivityTime(right) - getSessionActivityTime(left));
+    const items = allItems.slice(0, sessionFetchLimit);
+    const allPagesAvailable = pages.every((page) => page.available);
+    const allTotalsKnown = allPagesAvailable && pages.every((page) => page.data.total !== null);
+
+    return {
+      data: {
+        items,
+        total: allTotalsKnown ? pages.reduce((total, page) => total + (page.data.total ?? 0), 0) : null,
+        hasMore: !allPagesAvailable || allItems.length > items.length || pages.some((page) => page.data.hasMore),
+      } satisfies HermesSessionsPage,
+      available: pages.some((page) => page.available),
+    };
   }
 
   private async getDashboardUpdateStatusAsync(
@@ -250,7 +329,7 @@ export class HermesAgentIntegration extends Integration {
       return {
         currentReleaseTag: releaseDate ? `v${releaseDate}` : dashboardUpdate.current_version,
         latestReleaseTag: "upstream main",
-        hasNewRelease: dashboardUpdate.update_available || dashboardUpdate.behind !== 0,
+        hasNewRelease: dashboardUpdate.behind > 0 || (dashboardUpdate.behind === 0 && dashboardUpdate.update_available),
         commitsBehind: dashboardUpdate.behind >= 0 ? dashboardUpdate.behind : null,
         releaseUrl: "https://github.com/NousResearch/hermes-agent/commits/main",
       };
@@ -417,3 +496,24 @@ export class HermesAgentIntegration extends Integration {
     };
   }
 }
+
+const getDashboardActivityProfiles = (status: HermesDashboardStatus) =>
+  Array.from(new Set((status.gateways ?? []).map((gateway) => gateway.profile)));
+
+const aggregateDashboardActivity = (
+  dashboardStatus: HermesDashboardStatus,
+  profileStatuses: HermesDashboardStatus[],
+): HermesDashboardStatus => ({
+  ...dashboardStatus,
+  active_agents: sumReportedValues(profileStatuses.map((status) => status.active_agents)),
+  active_sessions: sumReportedValues(profileStatuses.map((status) => status.active_sessions)),
+  gateway_busy: profileStatuses.some((status) => status.gateway_busy === true),
+});
+
+const sumReportedValues = (values: Array<number | null | undefined>) =>
+  values.some((value) => value !== null && value !== undefined)
+    ? values.reduce<number>((total, value) => total + (value ?? 0), 0)
+    : null;
+
+const getSessionActivityTime = (session: HermesSession) =>
+  parseHermesTimestamp(session.last_active ?? session.started_at) ?? 0;
