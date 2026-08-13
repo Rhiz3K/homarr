@@ -42,7 +42,7 @@ export function DetailsGrid({
     options.showPlatforms,
     options.showSessions,
     options.showJobs,
-    options.showToolsets,
+    options.showSkills,
   ].filter(Boolean).length;
   const detailColumns = Math.max(1, Math.min(columns, maxSections, enabledSectionCount));
   const typography = getDetailsTypography(width, detailColumns);
@@ -109,7 +109,7 @@ export function DetailsGrid({
           ),
         }
       : null,
-    options.showToolsets
+    options.showSkills
       ? {
           id: "skills",
           label: t("sections.skills"),

@@ -738,6 +738,102 @@ describe("HermesAgentIntegration", () => {
     expect(sessionProfiles).toEqual(expect.arrayContaining(["default", "icor-gamedev"]));
   });
 
+  test("getOverviewAsync bounds concurrent dashboard profile requests", async () => {
+    const profiles = Array.from({ length: 9 }, (_, profileIndex) => `profile-${profileIndex}`);
+    let activeStatusRequests = 0;
+    let activeSessionRequests = 0;
+    let maximumStatusRequests = 0;
+    let maximumSessionRequests = 0;
+
+    mockFetchWithTrustedCertificates.mockImplementation((url) => {
+      const parsedUrl = getRequestUrl(url);
+      const profile = parsedUrl.searchParams.get("profile");
+
+      if (parsedUrl.pathname === "/health") {
+        return Promise.resolve(
+          new Response("<!doctype html>", { headers: { "content-type": "text/html" } }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+      if (parsedUrl.pathname === "/") {
+        return Promise.resolve(
+          new Response('<script>window.__HERMES_SESSION_TOKEN__="test-token";</script>', {
+            headers: { "content-type": "text/html" },
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/status" && profile) {
+        activeStatusRequests += 1;
+        maximumStatusRequests = Math.max(maximumStatusRequests, activeStatusRequests);
+        return Promise.resolve(
+          createResponse({
+            version: "0.20.0",
+            gateway_running: true,
+            gateway_state: "running",
+            active_agents: 0,
+            active_sessions: 0,
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        ).finally(() => {
+          activeStatusRequests -= 1;
+        });
+      }
+      if (parsedUrl.pathname === "/api/status") {
+        return Promise.resolve(
+          createResponse({
+            version: "0.20.0",
+            gateway_running: true,
+            gateway_state: "running",
+            profiles,
+            gateways: profiles.map((gatewayProfile) => ({ profile: gatewayProfile })),
+          }) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+        );
+      }
+      if (parsedUrl.pathname === "/api/sessions" && profile) {
+        activeSessionRequests += 1;
+        maximumSessionRequests = Math.max(maximumSessionRequests, activeSessionRequests);
+        return Promise.resolve(
+          createResponse({ sessions: [], total: 0, limit: 100, offset: 0 }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        ).finally(() => {
+          activeSessionRequests -= 1;
+        });
+      }
+      if (parsedUrl.pathname === "/api/hermes/update/check") {
+        return Promise.resolve(
+          createResponse({ current_version: "0.20.0", behind: 0, update_available: false }) as Awaited<
+            ReturnType<typeof fetchWithTrustedCertificatesAsync>
+          >,
+        );
+      }
+      if (["/api/skills", "/api/cron/jobs", "/api/tools/toolsets"].includes(parsedUrl.pathname)) {
+        return Promise.resolve(createResponse([]) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>);
+      }
+
+      return Promise.resolve(
+        createResponse({ error: "Not Found" }, 404) as Awaited<ReturnType<typeof fetchWithTrustedCertificatesAsync>>,
+      );
+    });
+
+    await createHermesAgentIntegration([]).getOverviewAsync();
+
+    expect(maximumStatusRequests).toBeLessThanOrEqual(4);
+    expect(maximumSessionRequests).toBeLessThanOrEqual(4);
+    expect(
+      mockFetchWithTrustedCertificates.mock.calls.filter(([url]) => {
+        const requestUrl = getRequestUrl(url);
+        return requestUrl.pathname === "/api/status" && requestUrl.searchParams.has("profile");
+      }),
+    ).toHaveLength(profiles.length);
+    expect(
+      mockFetchWithTrustedCertificates.mock.calls.filter(([url]) => {
+        const requestUrl = getRequestUrl(url);
+        return requestUrl.pathname === "/api/sessions" && requestUrl.searchParams.has("profile");
+      }),
+    ).toHaveLength(profiles.length);
+  });
+
   test("getOverviewAsync marks merged sessions incomplete when one profile request fails", async () => {
     mockFetchWithTrustedCertificates.mockImplementation((url) => {
       const parsedUrl = getRequestUrl(url);

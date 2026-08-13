@@ -26,9 +26,7 @@ export const { definition, componentLoader } = createWidgetDefinition("hermesAge
         showPlatforms: factory.switch({ defaultValue: true, withDescription: true }),
         showSessions: factory.switch({ defaultValue: true, withDescription: true }),
         showJobs: factory.switch({ defaultValue: true, withDescription: true }),
-        // Keep the original persisted key so preview builds that hid toolsets
-        // continue to hide the replacement skills panel after upgrading.
-        showToolsets: factory.switch({ defaultValue: true, withDescription: true }),
+        showSkills: factory.switch({ defaultValue: true, withDescription: true }),
       }),
       {
         themePreset: { shouldHide: (options) => !options.brandTheme },

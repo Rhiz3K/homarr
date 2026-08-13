@@ -2591,7 +2591,7 @@
           "label": "Show scheduled jobs",
           "description": "Show scheduled and paused jobs when detail access is allowed"
         },
-        "showToolsets": {
+        "showSkills": {
           "label": "Show skills",
           "description": "Show enabled skills ordered by Hermes usage when detail access is allowed"
         }

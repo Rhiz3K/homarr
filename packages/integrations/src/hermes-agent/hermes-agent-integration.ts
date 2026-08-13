@@ -41,6 +41,7 @@ const githubHeaders = {
 const githubUpdateCacheDurationMs = 60 * 60 * 1000;
 const githubUpdateCacheMaxEntries = 32;
 const sessionFetchLimit = 100;
+const dashboardProfileRequestConcurrency = 4;
 const githubUpdateCache = new Map<
   string,
   {
@@ -250,14 +251,11 @@ export class HermesAgentIntegration extends Integration {
   ) {
     if (profiles.length === 0) return dashboardStatus;
 
-    const statuses = await Promise.all(
-      profiles.map((profile) =>
-        this.getOptionalAsync(
-          "dashboard profile status",
-          () =>
-            this.getJsonAsync("/api/status", hermesDashboardStatusSchema, { profile }, false, dashboardHeaders ?? {}),
-          null,
-        ),
+    const statuses = await mapInBatchesAsync(profiles, dashboardProfileRequestConcurrency, (profile) =>
+      this.getOptionalAsync(
+        "dashboard profile status",
+        () => this.getJsonAsync("/api/status", hermesDashboardStatusSchema, { profile }, false, dashboardHeaders ?? {}),
+        null,
       ),
     );
     const availableStatuses = statuses.filter((status): status is HermesDashboardStatus => status !== null);
@@ -269,24 +267,22 @@ export class HermesAgentIntegration extends Integration {
 
   private async getDashboardSessionsDataAsync(profiles: string[], dashboardHeaders: Record<string, string>) {
     const scopes: Array<string | null> = profiles.length === 0 ? [null] : profiles;
-    const pages = await Promise.all(
-      scopes.map((profile) =>
-        this.getOptionalDataAsync(
-          "dashboard profile sessions",
-          () =>
-            this.getJsonAsync(
-              "/api/sessions",
-              hermesSessionsResponseSchema,
-              {
-                limit: sessionFetchLimit,
-                order: "recent",
-                ...(profile ? { profile } : {}),
-              },
-              false,
-              dashboardHeaders,
-            ),
-          { items: [], total: null, hasMore: true },
-        ),
+    const pages = await mapInBatchesAsync(scopes, dashboardProfileRequestConcurrency, (profile) =>
+      this.getOptionalDataAsync(
+        "dashboard profile sessions",
+        () =>
+          this.getJsonAsync(
+            "/api/sessions",
+            hermesSessionsResponseSchema,
+            {
+              limit: sessionFetchLimit,
+              order: "recent",
+              ...(profile ? { profile } : {}),
+            },
+            false,
+            dashboardHeaders,
+          ),
+        { items: [], total: null, hasMore: true },
       ),
     );
     const allItems = pages
@@ -514,6 +510,20 @@ const sumReportedValues = (values: Array<number | null | undefined>) =>
   values.some((value) => value !== null && value !== undefined)
     ? values.reduce<number>((total, value) => total + (value ?? 0), 0)
     : null;
+
+const mapInBatchesAsync = async <TItem, TResult>(
+  items: TItem[],
+  batchSize: number,
+  mapAsync: (item: TItem) => Promise<TResult>,
+) => {
+  const results: TResult[] = [];
+
+  for (let batchStart = 0; batchStart < items.length; batchStart += batchSize) {
+    results.push(...(await Promise.all(items.slice(batchStart, batchStart + batchSize).map(mapAsync))));
+  }
+
+  return results;
+};
 
 const getSessionActivityTime = (session: HermesSession) =>
   parseHermesTimestamp(session.last_active ?? session.started_at) ?? 0;
