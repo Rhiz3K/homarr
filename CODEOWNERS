@@ -162,6 +162,10 @@ packages/integrations/src/prowlarr @hillaliy
 apps/docs/docs/integrations/proxmox @Meierschlumpf
 packages/integrations/src/proxmox @Meierschlumpf
 
+# Pushover - introduced by @Rhiz3K
+apps/docs/docs/integrations/pushover @Rhiz3K
+packages/integrations/src/pushover @Rhiz3K
+
 # Quay - introduced in https://github.com/homarr-labs/homarr/pull/3607 by @Aandree5
 apps/docs/docs/integrations/quay @Aandree5
 packages/integrations/src/quay @Aandree5

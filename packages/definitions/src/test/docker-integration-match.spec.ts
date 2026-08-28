@@ -116,4 +116,13 @@ describe("matchIntegrationKindFromContainer", () => {
       }),
     ).toBeNull();
   });
+
+  it("excludes pushover because its integration targets the cloud API", () => {
+    expect(
+      matchIntegrationKindFromContainer({
+        image: "ghcr.io/example/pushover-bridge:latest",
+        name: "pushover",
+      }),
+    ).toBeNull();
+  });
 });

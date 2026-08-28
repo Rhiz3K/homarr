@@ -1,5 +1,6 @@
 import {
   IconCode,
+  IconDevices,
   IconGrid3x3,
   IconKey,
   IconLink,
@@ -32,4 +33,6 @@ export const integrationSecretIcons = {
   githubInstallationId: IconPlug,
   privateKey: IconKey,
   slug: IconTag,
+  sessionSecret: IconKey,
+  deviceId: IconDevices,
 } satisfies Record<IntegrationSecretKind, TablerIcon>;

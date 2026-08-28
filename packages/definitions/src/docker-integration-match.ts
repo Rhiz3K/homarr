@@ -63,7 +63,7 @@ export const matchIntegrationKind = (search: string): IntegrationKind | null => 
   return null;
 };
 
-const notDockerDiscoverable = new Set<IntegrationKind>(["ical", "mock"]);
+const notDockerDiscoverable = new Set<IntegrationKind>(["ical", "mock", "pushover"]);
 
 interface ContainerMatchInput {
   image: string;

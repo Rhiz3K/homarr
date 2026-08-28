@@ -74,7 +74,7 @@
 </a>
 </td>
 <td align="center">
-<a href="null" target="_blank" rel="noreferrer noopener">
+<a href="https://homarr.dev/docs/integrations/archiveteam-warrior" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/archiveteam-warrior.png" alt="ArchiveTeam Warrior" width="90" height="90" />
   <br/>  
   <p align="center">ArchiveTeam<br/>Warrior</p>
@@ -88,7 +88,7 @@
 </a>
 </td>
 <td align="center">
-<a href="null" target="_blank" rel="noreferrer noopener">
+<a href="https://homarr.dev/docs/integrations/audiobookshelf" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/audiobookshelf.svg" alt="Audiobookshelf" width="90" height="90" />
   <br/>  
   <p align="center">Audiobookshelf</p>
@@ -137,7 +137,7 @@
 </a>
 </td>
 <td align="center">
-<a href="null" target="_blank" rel="noreferrer noopener">
+<a href="https://homarr.dev/docs/integrations/glances" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/glances.svg" alt="Glances" width="90" height="90" />
   <br/>  
   <p align="center">Glances</p>
@@ -200,7 +200,7 @@
 </a>
 </td>
 <td align="center">
-<a href="null" target="_blank" rel="noreferrer noopener">
+<a href="https://homarr.dev/docs/integrations/navidrome" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/navidrome.svg" alt="Navidrome" width="90" height="90" />
   <br/>  
   <p align="center">Navidrome</p>
@@ -249,7 +249,7 @@
 </a>
 </td>
 <td align="center">
-<a href="null" target="_blank" rel="noreferrer noopener">
+<a href="https://homarr.dev/docs/integrations/paperless-ngx" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/paperless-ngx.svg" alt="Paperless-ngx" width="90" height="90" />
   <br/>  
   <p align="center">Paperless-ngx</p>
@@ -263,7 +263,7 @@
 </a>
 </td>
 <td align="center">
-<a href="null" target="_blank" rel="noreferrer noopener">
+<a href="https://homarr.dev/docs/integrations/peanut" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/peanut.svg" alt="PeaNUT" width="90" height="90" />
   <br/>  
   <p align="center">PeaNUT</p>
@@ -298,13 +298,20 @@
 </a>
 </td>
 <td align="center">
+<a href="https://homarr.dev/docs/integrations/pushover" target="_blank" rel="noreferrer noopener">
+  <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/pushover.svg" alt="Pushover" width="90" height="90" />
+  <br/>  
+  <p align="center">Pushover</p>
+</a>
+</td></tr>
+<tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/q-bittorent" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/qbittorrent.svg" alt="qBittorrent" width="90" height="90" />
   <br/>  
   <p align="center">qBittorrent</p>
 </a>
-</td></tr>
-<tr><td align="center">
+</td>
+<td align="center">
 <a href="https://homarr.dev/docs/integrations/radarr" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/radarr.svg" alt="Radarr" width="90" height="90" />
   <br/>  
@@ -313,7 +320,7 @@
 </td>
 <td align="center">
 <a href="https://homarr.dev/docs/integrations/readarr" target="_blank" rel="noreferrer noopener">
-  <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/readarr.svg" alt="Readarr" width="90" height="90" />
+  <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@main/png/readarr.png" alt="Readarr" width="90" height="90" />
   <br/>  
   <p align="center">Readarr</p>
 </a>
@@ -345,15 +352,15 @@
   <br/>  
   <p align="center">Sonarr</p>
 </a>
-</td>
-<td align="center">
+</td></tr>
+<tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/speedtest-tracker" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/speedtest-tracker.png" alt="Speedtest Tracker" width="90" height="90" />
   <br/>  
   <p align="center">Speedtest<br/>Tracker</p>
 </a>
-</td></tr>
-<tr><td align="center">
+</td>
+<td align="center">
 <a href="https://homarr.dev/docs/integrations/synology" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/synology.svg" alt="Synology DiskStation" width="90" height="90" />
   <br/>  
@@ -394,15 +401,15 @@
   <br/>  
   <p align="center">Transmission</p>
 </a>
-</td>
-<td align="center">
+</td></tr>
+<tr><td align="center">
 <a href="https://homarr.dev/docs/integrations/truenas" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/truenas.svg" alt="TrueNAS" width="90" height="90" />
   <br/>  
   <p align="center">TrueNAS</p>
 </a>
-</td></tr>
-<tr><td align="center">
+</td>
+<td align="center">
 <a href="https://homarr.dev/docs/integrations/umami" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/umami.svg" alt="Umami" width="90" height="90" />
   <br/>  
@@ -424,7 +431,7 @@
 </a>
 </td>
 <td align="center">
-<a href="null" target="_blank" rel="noreferrer noopener">
+<a href="https://homarr.dev/docs/integrations/uptime-kuma" target="_blank" rel="noreferrer noopener">
   <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/uptime-kuma.svg" alt="Uptime Kuma" width="90" height="90" />
   <br/>  
   <p align="center">Uptime<br/>Kuma</p>

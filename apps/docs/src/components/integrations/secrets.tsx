@@ -1,4 +1,13 @@
-import { IconCode, IconKey, IconKeyOff, IconLink, IconPassword, IconPlug, IconUser } from "@tabler/icons-react";
+import {
+  IconCode,
+  IconDevices,
+  IconKey,
+  IconKeyOff,
+  IconLink,
+  IconPassword,
+  IconPlug,
+  IconUser,
+} from "@tabler/icons-react";
 import TabItem from "@theme/TabItem";
 import Tabs from "@theme/Tabs";
 import { ReactNode } from "react";
@@ -77,6 +86,16 @@ const secretKinds = {
     name: "Slug",
     description: "The slug or path identifier for the resource",
     icon: IconLink,
+  },
+  sessionSecret: {
+    name: "Session secret",
+    description: "The session secret returned by the Pushover login API.",
+    icon: IconKey,
+  },
+  deviceId: {
+    name: "Device ID",
+    description: "The id of the Open Client device registered for Homarr.",
+    icon: IconDevices,
   },
 };
 

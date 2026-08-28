@@ -20,6 +20,8 @@ export const integrationSecretKindObject = {
   githubAppId: { isPublic: true, multiline: false },
   githubInstallationId: { isPublic: true, multiline: false },
   slug: { isPublic: true, multiline: false },
+  sessionSecret: { isPublic: false, multiline: false },
+  deviceId: { isPublic: true, multiline: false },
 } satisfies Record<string, { isPublic: boolean; multiline: boolean }>;
 
 export const integrationSecretKinds = objectKeys(integrationSecretKindObject);
@@ -314,6 +316,14 @@ export const integrationDefs = {
     category: ["notifications"],
     documentationUrl: createDocumentationLink("/docs/integrations/gotify"),
     defaultPort: 80,
+  },
+  pushover: {
+    name: "Pushover",
+    secretKinds: [["sessionSecret", "deviceId"]],
+    iconUrl: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@master/svg/pushover.svg",
+    category: ["notifications"],
+    defaultUrl: "https://api.pushover.net",
+    documentationUrl: createDocumentationLink("/docs/integrations/pushover"),
   },
   ical: {
     name: "iCal",

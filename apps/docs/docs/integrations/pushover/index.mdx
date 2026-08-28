@@ -1,0 +1,54 @@
+---
+title: "Pushover"
+description: "Pushover is a push notification service for Android, iOS and desktop devices."
+hide_title: true
+---
+
+import { notificationsWidget } from "@site/docs/widgets/notifications";
+import { AddingIntegration } from "@site/src/components/integrations/adding";
+import { IntegrationHeader } from "@site/src/components/integrations/header";
+import { IntegrationSecrets } from "@site/src/components/integrations/secrets";
+import { IntegrationCapabilites } from "@site/src/components/integrations/widgets";
+import { pushoverIntegration } from ".";
+
+<IntegrationHeader integration={pushoverIntegration} categories={["Notifications", "Messaging"]} />
+
+The Pushover integration shows the notifications of a [Pushover](https://pushover.net/) account in the notifications widget. Homarr registers as an unofficial [Open Client](https://pushover.net/api/client) device of the account and only downloads the messages queued for that device. It never deletes or acknowledges them, so other devices are not affected.
+
+### Widgets & Capabilities
+
+<IntegrationCapabilites items={[{ widget: notificationsWidget }]} />
+
+### Configuration
+
+Pushover treats Open Clients as desktop devices, so the account needs a **Pushover for Desktop** license within 30 days after the device is registered. Otherwise Pushover deactivates the device.
+
+1. Log in with the Pushover API to obtain a session secret. The response contains the `secret`. If the account uses two-factor authentication, the request returns HTTP status `412`; repeat it with the current code as additional `twofa` parameter.
+
+   ```bash
+   curl -X POST https://api.pushover.net/1/users/login.json \
+     --form-string "email=you@example.com" \
+     --form-string "password=your-password"
+   ```
+
+2. Register a new Open Client device for Homarr. The name may contain up to 25 characters (`A-Z`, `a-z`, `0-9`, `_`, `-`) and must be unique in the account. The response contains the device `id`.
+
+   ```bash
+   curl -X POST https://api.pushover.net/1/devices.json \
+     --form-string "secret=your-session-secret" \
+     --form-string "name=homarr" \
+     --form-string "os=O"
+   ```
+
+3. Add the integration in Homarr, keep the URL `https://api.pushover.net` and enter the session secret and the device ID.
+
+<AddingIntegration />
+
+<IntegrationSecrets secrets={[{ credentials: ["sessionSecret", "deviceId"], steps: [] }]} />
+
+### Notes
+
+- Homarr is an unofficial Pushover Open Client and is not released or supported by Pushover.
+- The password is only used for the login request and is never stored in Homarr. Register a separate device for every Pushover integration.
+- Pushover only delivers messages sent after the device was registered and keeps them for up to 21 days. Homarr shows the newest 100 and checks for new messages about once per minute.
+- Everyone who can view a board with the notifications widget can read the messages.

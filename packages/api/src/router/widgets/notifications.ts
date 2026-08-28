@@ -1,5 +1,5 @@
 import { getIntegrationKindsByCategory } from "@homarr/definitions";
-import { notificationsRequestHandler } from "@homarr/request-handler/notifications";
+import { getNotificationsRequestHandler } from "@homarr/request-handler/notifications";
 
 import type { IntegrationAction } from "../../middlewares/integration";
 import { createManyIntegrationMiddleware } from "../../middlewares/integration";
@@ -16,7 +16,7 @@ export const notificationsRouter = createTRPCRouter({
       return await settleIntegrationQueries(
         ctx.integrations,
         async (integration) => {
-          const innerHandler = notificationsRequestHandler.handler(integration, {});
+          const innerHandler = getNotificationsRequestHandler(integration.kind).handler(integration, {});
           const { data, timestamp } = await innerHandler.getDataAsync();
 
           return {

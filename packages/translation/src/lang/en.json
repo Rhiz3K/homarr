@@ -1659,6 +1659,14 @@
           "label": "Topic",
           "newLabel": "New topic"
         },
+        "sessionSecret": {
+          "label": "Session secret",
+          "newLabel": "New session secret"
+        },
+        "deviceId": {
+          "label": "Device ID",
+          "newLabel": "New device ID"
+        },
         "url": {
           "label": "Url",
           "newLabel": "New url"
